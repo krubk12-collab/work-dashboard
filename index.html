@@ -95,6 +95,10 @@
   #c-rabbit .tag{background:var(--rabbit);color:#1c5a1c} #c-panda .tag{background:var(--panda)}
 
   @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+  /* ไฟ LIVE เมื่อต่อข้อมูลจริงสำเร็จ */
+  .char.live .tag::after{content:"●";margin-left:5px;color:#27d367;font-size:9px;vertical-align:middle;
+    animation:blink 1.4s ease-in-out infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
 
   /* ===== PANEL รายละเอียด (เปิดเมื่อคลิกตัวละคร) ===== */
   .scrim{position:fixed;inset:0;background:rgba(20,16,40,.5);backdrop-filter:blur(3px);
@@ -222,6 +226,107 @@ const DATA={
     quote:'ค่อยๆ ทำนะ พักได้ก็พัก เดี๋ยวงานก็เสร็จเอง 🎍' }
 };
 
+/* =========================================================
+   โหลดข้อมูลจริงจาก Google Sheets ผ่าน gviz (JSONP — ไม่ติด CORS)
+   ========================================================= */
+const CFG={
+  scheduleId:'14ZyWxubxyrpJN3GGN8YE8llP6ynZHHMOHyzrh3v6sng',
+  teachingLogId:'1qff81PoB2ZEPZr-PwyRj8TM0EF72GbLXDuwTiXXBSPI',
+  teacherId:'T013'   // ครูบีเค (ณัฐธเนศ อ้นจีน)
+};
+
+// โหลดชีตเป็น array ของ object (key = ชื่อคอลัมน์แถวแรก)
+function gviz(sheetId){
+  return new Promise((resolve,reject)=>{
+    const cb='gviz_'+Math.random().toString(36).slice(2);
+    const s=document.createElement('script');
+    const to=setTimeout(()=>{cleanup();reject('timeout');},12000);
+    function cleanup(){clearTimeout(to);delete window[cb];s.remove();}
+    window[cb]=(resp)=>{
+      try{
+        const t=resp.table, cols=t.cols.map(c=>(c.label||c.id||'').trim());
+        const rows=t.rows.map(r=>{const o={};(r.c||[]).forEach((cell,i)=>{o[cols[i]]=cell?cell.v:null;});return o;});
+        cleanup();resolve(rows);
+      }catch(err){cleanup();reject(err);}
+    };
+    s.onerror=()=>{cleanup();reject('script error');};
+    s.src=`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=responseHandler:${cb};out:json&headers=1`;
+    document.body.appendChild(s);
+  });
+}
+
+function fmtDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function asDateStr(v){
+  if(v==null) return '';
+  if(v instanceof Date) return fmtDate(v);
+  const s=String(v);
+  const m=s.match(/^Date\((\d+),(\d+),(\d+)/);   // gviz date type
+  if(m) return fmtDate(new Date(+m[1],+m[2],+m[3]));
+  return s.slice(0,10);
+}
+function mondayOf(d){const x=new Date(d);const dow=x.getDay();x.setDate(x.getDate()+(dow===0?-6:1-dow));x.setHours(0,0,0,0);return x;}
+
+// คำนวณการ์ด 🐮 งานสอน + XP จาก Schedule + TeachingLog
+function computeTeaching(schedule,logs){
+  const now=new Date(), todayStr=fmtDate(now);
+  const schedDow=(now.getDay()===0?7:now.getDay());   // 1=จ..7=อา
+  const monday=mondayOf(now), ym=todayStr.slice(0,7);
+
+  const sched=schedule.filter(r=>String(r.teacher_id).trim()===CFG.teacherId && String(r.is_active).toUpperCase()==='TRUE');
+  const weekScheduled=sched.length;
+  const todayScheduled=sched.filter(r=>Number(r.day_of_week)===schedDow).length;
+
+  const mine=logs.filter(r=>String(r.teacher_id).trim()===CFG.teacherId);
+  const todayLogs=mine.filter(r=>asDateStr(r.date)===todayStr);
+  const todayTaught=todayLogs.filter(r=>r.status==='taught').length;
+  const todayRecorded=todayLogs.length;
+  let weekTaught=0,monthRecorded=0,totalTaught=0;
+  mine.forEach(r=>{
+    const ds=asDateStr(r.date); if(!ds) return;
+    const d=new Date(ds+'T00:00:00');
+    if(r.status==='taught'){totalTaught++; if(d>=monday) weekTaught++;}
+    if(ds.slice(0,7)===ym) monthRecorded++;
+  });
+  const recordPct=todayScheduled?Math.round(todayRecorded/todayScheduled*100):0;
+
+  let bubble;
+  if(todayScheduled===0) bubble='วันนี้ไม่มีคาบสอน พักได้~';
+  else if(todayRecorded>=todayScheduled) bubble='บันทึกครบทุกคาบแล้ว เก่งมาก!';
+  else if(todayTaught>0) bubble='วันนี้สอนแล้ว '+todayTaught+' คาบ!';
+  else bubble='วันนี้มี '+todayScheduled+' คาบ อย่าลืมบันทึกนะ';
+
+  const badges=[];
+  if(weekScheduled) badges.push('📚 '+weekScheduled+' คาบ/สัปดาห์');
+  if(weekTaught>=10) badges.push('🔥 สอนแล้ว '+weekTaught+' คาบสัปดาห์นี้');
+  if(recordPct===100&&todayScheduled) badges.push('✅ บันทึกครบวันนี้');
+  if(monthRecorded>0) badges.push('🗓️ เดือนนี้บันทึก '+monthRecorded+' คาบ');
+  if(!badges.length) badges.push('🌱 เริ่มบันทึกการสอนกันเถอะ');
+
+  return {
+    card:{title:'งานสอน',subtitle:'บันทึกการเข้าสอน',bubble,color:'#7cc4ff',
+      stats:[['คาบที่สอนวันนี้',todayTaught+' / '+todayScheduled],
+             ['สัปดาห์นี้ (สอนแล้ว)',weekTaught+' คาบ'],
+             ['บันทึกครบวันนี้',recordPct+'%']],
+      progress:recordPct,badges,
+      quote:todayScheduled?'ขยันสอนสุดๆ เลยครู ไปต่ออีกนิดเดียว!':'วันว่างก็พักผ่อนบ้างนะครู ☕'},
+    xp:totalTaught*10
+  };
+}
+
+async function loadReal(){
+  try{
+    const [schedule,logs]=await Promise.all([gviz(CFG.scheduleId),gviz(CFG.teachingLogId)]);
+    const t=computeTeaching(schedule,logs);
+    DATA.cow=t.card;
+    const per=500, lvl=Math.floor(t.xp/per)+1;
+    DATA.player={name:'ครูบีเค',level:lvl,xp:t.xp%per,xpMax:per};
+    render();
+    document.getElementById('c-cow').classList.add('live');
+  }catch(err){
+    console.warn('โหลดข้อมูลจริงไม่สำเร็จ ใช้ข้อมูลจำลองแทน:',err);
+  }
+}
+
 /* ---- render ---- */
 function render(){
   const p=DATA.player;
@@ -279,8 +384,9 @@ function detectAssets(){
   bg.src='assets/room.png';
 }
 
-render();tick();detectAssets();
+render();tick();detectAssets();loadReal();
 setInterval(tick,1000*30);
+setInterval(loadReal,1000*60*5);   // รีเฟรชข้อมูลจริงทุก 5 นาที
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel();});
 </script>
 </body>
