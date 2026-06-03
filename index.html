@@ -284,13 +284,16 @@ const CFG={
   scheduleUrl:'https://sites.google.com/view/bklive/',
   // 🐱 เว็บ/โปรเจกต์ — ใช้ DASH_API เดิม (apps+todos+sheets, CORS เปิด fetch ได้)
   dashApi:'https://script.google.com/macros/s/AKfycbxCYo2PchMP09jqu9LkAwUlrvrJuTCy0pvyy6jGrE0ky6qYhdFJ-QVDrv9xqH23MYaJ/exec',
-  todosSheetUrl:'https://docs.google.com/spreadsheets/d/1DlRZ6Q4H6XrGB4bFLz9fTs8wo9ZSQSvhaubdz7P2980/edit'
+  todosSheetUrl:'https://docs.google.com/spreadsheets/d/1DlRZ6Q4H6XrGB4bFLz9fTs8wo9ZSQSvhaubdz7P2980/edit',
+  // 🐰 งานนักเรียน — student_profile (gviz หลายชีต)
+  studentSS:'1xOdkgx-jJffJn8_1qbVhKZTcCpNlxCkd0bAfADe-3Lg',
+  studentUrl:'https://script.google.com/macros/s/AKfycbxUli1ed9xM0jC5-lytK51i4Pn9-YEMkfX9LGCjVvzJraLeIvEVzr-8AjugAbaECYYwGQ/exec'
 };
 const CLASS_MAP={C17:'ม.1/1',C18:'ม.1/2',C19:'ม.2/1',C20:'ม.2/2',C21:'ม.3/1',C22:'ม.3/2'};
 const DOW_TH=['','จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์','อาทิตย์'];
 
-// โหลดชีตเป็น array ของ object (key = ชื่อคอลัมน์แถวแรก)
-function gviz(sheetId){
+// โหลดชีตเป็น array ของ object (key = ชื่อคอลัมน์แถวแรก) — ระบุชื่อชีตได้
+function gviz(sheetId,sheetName){
   return new Promise((resolve,reject)=>{
     const cb='gviz_'+Math.random().toString(36).slice(2);
     const s=document.createElement('script');
@@ -304,7 +307,9 @@ function gviz(sheetId){
       }catch(err){cleanup();reject(err);}
     };
     s.onerror=()=>{cleanup();reject('script error');};
-    s.src=`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=responseHandler:${cb};out:json&headers=1`;
+    let src=`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=responseHandler:${cb};out:json&headers=1`;
+    if(sheetName) src+='&sheet='+encodeURIComponent(sheetName);
+    s.src=src;
     document.body.appendChild(s);
   });
 }
@@ -465,6 +470,57 @@ function computeProjects(d){
   };
 }
 
+// 🐰 คำนวณการ์ดงานนักเรียน จาก StudentProfiles + HealthCheck + HomeVisit + GoodDeeds
+function computeStudents(profiles,health,visits,deeds){
+  const today=fmtDate(new Date()), T=CFG.teacherId;
+  const cls=cid=>CLASS_MAP[cid]||cid||'';
+  const distinct=(arr,k)=>new Set(arr.filter(r=>r[k]!=null&&String(r[k]).trim()).map(r=>String(r[k]).trim())).size;
+
+  const totalProfiles=distinct(profiles,'student_id');
+  const myHealth=health.filter(r=>String(r.teacher_id).trim()===T);
+  const healthToday=myHealth.filter(r=>asDateStr(r.date)===today);
+  const healthTodayStu=new Set(healthToday.map(r=>String(r.student_id).trim())).size;
+  const myVisits=visits.filter(r=>String(r.teacher_id).trim()===T && asDateStr(r.visit_date)>=CFG.termStart);
+  const visitedStu=new Set(myVisits.map(r=>String(r.student_id).trim())).size;
+  const myDeeds=deeds.filter(r=>String(r.teacher_id).trim()===T);
+  const deedPts=myDeeds.reduce((s,r)=>s+(Number(r.points)||0),0);
+  const coverage=totalProfiles?Math.round(visitedStu/totalProfiles*100):0;
+
+  // ตรวจสุขภาพวันนี้ (รายคน)
+  const healthList=healthToday.map(r=>({stu:String(r.student_id).trim(),cls:cls(r.class_id),
+    items:[['ผม',r.hair],['เล็บ',r.nails],['ฟัน',r.teeth],['แต่งกาย',r.uniform]]}));
+  // ความดีล่าสุด
+  const goodDeeds=myDeeds.slice().sort((a,b)=>asDateStr(b.date).localeCompare(asDateStr(a.date)))
+    .slice(0,6).map(r=>({date:asDateStr(r.date),desc:r.description||r.category||'',
+      pts:Number(r.points)||0,cls:cls(r.class_id)}));
+
+  const badges=[];
+  if(totalProfiles) badges.push('👤 '+totalProfiles+' โปรไฟล์');
+  if(visitedStu) badges.push('🏠 เยี่ยมบ้าน '+visitedStu+' คน');
+  if(deedPts) badges.push('⭐ ความดี '+deedPts+' แต้ม');
+  if(myHealth.length) badges.push('🩺 ตรวจสุขภาพ '+myHealth.length+' ครั้ง');
+  if(!badges.length) badges.push('🌱 เริ่มบันทึกข้อมูลนักเรียน');
+
+  let bubble;
+  if(healthTodayStu>0) bubble='วันนี้ตรวจสุขภาพแล้ว '+healthTodayStu+' คน!';
+  else if(visitedStu>0) bubble='เยี่ยมบ้านไปแล้ว '+visitedStu+' คน เก่งมาก!';
+  else bubble='มาดูแลน้องๆ กันเถอะ 🐰';
+
+  return {
+    card:{title:'งานนักเรียน',subtitle:'เยี่ยมบ้าน '+coverage+'% ('+visitedStu+'/'+totalProfiles+' คน)',
+      color:'#a0e7a0',bubble,
+      stats:[['นักเรียนมีโปรไฟล์',totalProfiles+' คน'],
+             ['ตรวจสุขภาพวันนี้',healthTodayStu+' คน'],
+             ['เยี่ยมบ้านสะสม',visitedStu+' คน'],
+             ['บันทึกความดี',myDeeds.length+' ครั้ง ('+deedPts+' แต้ม)']],
+      progress:coverage,badges,
+      healthToday:healthList,goodDeeds,
+      links:[{label:'👧 เปิดระบบนักเรียน',url:CFG.studentUrl}],
+      quote:visitedStu<totalProfiles?'เยี่ยมบ้านให้ครบทุกคนนะ น้องๆ รออยู่ 🏠':'ดูแลน้องๆ ครบทุกคนเลย เยี่ยมมาก!'},
+    xp:myDeeds.length*5+myVisits.length*10+myHealth.length*2
+  };
+}
+
 async function loadReal(){
   let xpTotal=0, anyLive=false;
 
@@ -486,6 +542,16 @@ async function loadReal(){
       document.getElementById('c-cat').classList.add('live');
     }
   }catch(err){ console.warn('เว็บ/โปรเจกต์: โหลดไม่สำเร็จ',err); }
+
+  // 🐰 งานนักเรียน (gviz หลายชีตใน StudentDB)
+  try{
+    const [profiles,health,visits,deeds]=await Promise.all([
+      gviz(CFG.studentSS,'StudentProfiles'),gviz(CFG.studentSS,'HealthCheck'),
+      gviz(CFG.studentSS,'HomeVisit'),gviz(CFG.studentSS,'GoodDeeds')]);
+    const s=computeStudents(profiles,health,visits,deeds);
+    DATA.rabbit=s.card; xpTotal+=s.xp; anyLive=true;
+    document.getElementById('c-rabbit').classList.add('live');
+  }catch(err){ console.warn('งานนักเรียน: โหลดไม่สำเร็จ',err); }
 
   // ผู้เล่น (รวม XP ทุกหมวด)
   if(anyLive){
@@ -553,6 +619,25 @@ function openPanel(k){
          <span class="td-dot"></span>
          <span class="td-tx"><b>${t.app?t.app+': ':''}</b>${t.text}</span>
        </div>`).join('')+`</div>`;
+  }
+  // 🐰 ตรวจสุขภาพวันนี้
+  if(d.healthToday){
+    html+=`<div class="sec-h">🩺 ตรวจสุขภาพวันนี้</div>`;
+    if(d.healthToday.length){
+      html+=`<div class="tt">`+d.healthToday.map(h=>
+        `<div class="tt-row"><span class="pd" style="background:#a0e7a0;color:#1c5a1c">${h.cls}</span>
+           <span class="tt-main"><b>${h.stu}</b><small>${h.items.map(i=>i[0]+(String(i[1]).toLowerCase()==='pass'?' ✓':' ✗')).join(' · ')}</small></span></div>`
+        ).join('')+`</div>`;
+    }else{
+      html+=`<div class="quote">วันนี้ยังไม่ได้ตรวจสุขภาพ — เปิดระบบนักเรียนเพื่อบันทึก</div>`;
+    }
+  }
+  // 🐰 ความดีล่าสุด
+  if(d.goodDeeds&&d.goodDeeds.length){
+    html+=`<div class="sec-h">⭐ ความดีล่าสุด</div>`;
+    html+=`<div class="subj">`+d.goodDeeds.map(g=>
+      `<div class="subj-row"><span class="subj-n">${g.desc}<small style="color:#a7a4c0"> ${g.cls} · ${g.date}</small></span>
+        <span class="subj-v"><b style="color:#27a05a">+${g.pts}</b></span></div>`).join('')+`</div>`;
   }
   // สรุปสอนสะสมรายวิชา
   if(d.bySubject&&d.bySubject.length){
