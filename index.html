@@ -122,6 +122,32 @@
   .badges{display:flex;gap:8px;flex-wrap:wrap;padding:16px 24px}
   .badge{font-size:12px;font-weight:700;padding:6px 12px;border-radius:999px;background:#fff7e3;color:#b9821a;border:1.5px solid #ffe2a3}
   .quote{padding:16px 24px;font-size:14px;color:#6b6890;background:#faf9ff;font-weight:600}
+  .sec-h{padding:16px 24px 8px;font-size:14px;font-weight:700;color:#4a4770}
+  .sec-h small{font-weight:500;color:#9a97b5;font-size:11px}
+  /* ตารางวันนี้ */
+  .tt{padding:0 16px 6px}
+  .tt-row{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:12px}
+  .tt-row:nth-child(odd){background:#f7f6fd}
+  .tt-row.done{background:#eafaf0}
+  .tt-row .pd{flex:0 0 auto;font-size:11px;font-weight:700;color:#fff;background:#7cc4ff;padding:4px 8px;border-radius:8px}
+  .tt-main{flex:1;display:flex;flex-direction:column;line-height:1.25}
+  .tt-main b{font-size:13.5px;color:#2d2a4a}
+  .tt-main small{font-size:11px;color:#8b88a8}
+  .tt-st{flex:0 0 auto;font-size:11px;font-weight:700;color:#27a05a}
+  /* สรุปรายวิชา */
+  .subj{padding:0 24px 8px}
+  .subj-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed #eceaf6}
+  .subj-row:last-child{border-bottom:0}
+  .subj-n{font-size:13px;font-weight:600;color:#4a4770}
+  .subj-v{font-size:13px;color:#2d2a4a;white-space:nowrap}
+  .subj-v small{color:#a7a4c0;font-size:11px;font-weight:500}
+  /* ปุ่มลิงก์ */
+  .acts{display:flex;gap:10px;padding:14px 24px 4px}
+  .act{flex:1;text-align:center;text-decoration:none;font-weight:700;font-size:13.5px;
+    padding:12px;border-radius:14px;color:#fff;background:linear-gradient(135deg,#7cc4ff,#4aa3f0);
+    box-shadow:0 6px 14px rgba(74,163,240,.35);transition:transform .15s}
+  .act:nth-child(2){background:linear-gradient(135deg,#ffcf5c,#f5a623);box-shadow:0 6px 14px rgba(245,166,35,.35)}
+  .act:active{transform:scale(.97)}
 
   .footer{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:6;
     font-size:11px;color:rgba(45,42,74,.55);font-weight:600}
@@ -232,8 +258,14 @@ const DATA={
 const CFG={
   scheduleId:'14ZyWxubxyrpJN3GGN8YE8llP6ynZHHMOHyzrh3v6sng',
   teachingLogId:'1qff81PoB2ZEPZr-PwyRj8TM0EF72GbLXDuwTiXXBSPI',
-  teacherId:'T013'   // ครูบีเค (ณัฐธเนศ อ้นจีน)
+  subjectsId:'1BYF9tLnaBX9IHXafD32i1s21NOlnYQKPgIrXoLI8asU',
+  teacherId:'T013',   // ครูบีเค (ณัฐธเนศ อ้นจีน)
+  termStart:'2026-05-15',                          // เปิดเทอม 15 พ.ค. 2569
+  logUrl:'https://script.google.com/macros/s/AKfycbwR_jmt3cY2cobLlbmn0BgXSaTaKrj4TIVe0z72yr1t6abHZWBNIG1xkTwIoNnnj2rs/exec',
+  scheduleUrl:'https://sites.google.com/view/bklive/'
 };
+const CLASS_MAP={C17:'ม.1/1',C18:'ม.1/2',C19:'ม.2/1',C20:'ม.2/2',C21:'ม.3/1',C22:'ม.3/2'};
+const DOW_TH=['','จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์','อาทิตย์'];
 
 // โหลดชีตเป็น array ของ object (key = ชื่อคอลัมน์แถวแรก)
 function gviz(sheetId){
@@ -265,29 +297,81 @@ function asDateStr(v){
   return s.slice(0,10);
 }
 function mondayOf(d){const x=new Date(d);const dow=x.getDay();x.setDate(x.getDate()+(dow===0?-6:1-dow));x.setHours(0,0,0,0);return x;}
+// gviz เก็บเวลาเป็น Date(1899,11,30,HH,MM,SS) -> แปลงเป็น "HH:MM"
+function asTimeStr(v){
+  if(v==null) return '';
+  const s=String(v);
+  let m=s.match(/^Date\(\d+,\d+,\d+,(\d+),(\d+)/);
+  if(m) return m[1].padStart(2,'0')+':'+m[2].padStart(2,'0');
+  m=s.match(/(\d{1,2}):(\d{2})/);
+  if(m) return m[1].padStart(2,'0')+':'+m[2];
+  return s;
+}
 
-// คำนวณการ์ด 🐮 งานสอน + XP จาก Schedule + TeachingLog
-function computeTeaching(schedule,logs){
+// คำนวณการ์ด 🐮 งานสอน + XP จาก Schedule + TeachingLog + Subjects
+function computeTeaching(schedule,logs,subjects){
   const now=new Date(), todayStr=fmtDate(now);
   const schedDow=(now.getDay()===0?7:now.getDay());   // 1=จ..7=อา
   const monday=mondayOf(now), ym=todayStr.slice(0,7);
 
+  // map subject_id -> {name, level}
+  const subjMap={};
+  subjects.forEach(r=>{subjMap[String(r.subject_id).trim()]={name:r.subject_name,level:r.level};});
+  const subjLabel=sid=>{const s=subjMap[sid];return s?(s.name+(s.level?' '+s.level:'')):sid;};
+  const className=cid=>CLASS_MAP[cid]||cid;
+
   const sched=schedule.filter(r=>String(r.teacher_id).trim()===CFG.teacherId && String(r.is_active).toUpperCase()==='TRUE');
   const weekScheduled=sched.length;
-  const todayScheduled=sched.filter(r=>Number(r.day_of_week)===schedDow).length;
+  const todaySched=sched.filter(r=>Number(r.day_of_week)===schedDow)
+                        .sort((a,b)=>Number(a.period)-Number(b.period));
+  const todayScheduled=todaySched.length;
+
+  // index Schedule: class|dow|period -> subject_id (ไว้ join กับ log)
+  const schedIdx={};
+  sched.forEach(r=>{schedIdx[String(r.class_id).trim()+'|'+Number(r.day_of_week)+'|'+Number(r.period)]=String(r.subject_id).trim();});
 
   const mine=logs.filter(r=>String(r.teacher_id).trim()===CFG.teacherId);
   const todayLogs=mine.filter(r=>asDateStr(r.date)===todayStr);
   const todayTaught=todayLogs.filter(r=>r.status==='taught').length;
   const todayRecorded=todayLogs.length;
+
+  // สถานะที่บันทึกของแต่ละคาบวันนี้ (ไว้โชว์ในตาราง)
+  const todayStatus={};
+  todayLogs.forEach(r=>{todayStatus[String(r.class_id).trim()+'|'+Number(r.period)]=r.status;});
+
   let weekTaught=0,monthRecorded=0,totalTaught=0;
+  const bySubjCount={};                              // subject_id -> คาบที่สอนแล้ว (ตั้งแต่เปิดเทอม)
   mine.forEach(r=>{
     const ds=asDateStr(r.date); if(!ds) return;
     const d=new Date(ds+'T00:00:00');
-    if(r.status==='taught'){totalTaught++; if(d>=monday) weekTaught++;}
+    if(r.status==='taught'){
+      totalTaught++; if(d>=monday) weekTaught++;
+      if(ds>=CFG.termStart){
+        const dow=(d.getDay()===0?7:d.getDay());
+        const sid=schedIdx[String(r.class_id).trim()+'|'+dow+'|'+Number(r.period)];
+        if(sid) bySubjCount[sid]=(bySubjCount[sid]||0)+1;
+      }
+    }
     if(ds.slice(0,7)===ym) monthRecorded++;
   });
   const recordPct=todayScheduled?Math.round(todayRecorded/todayScheduled*100):0;
+
+  // ตารางวันนี้ (วิชา/คาบ/เวลา/ห้อง/สถานะ)
+  const ST_TH={taught:'✓ สอนแล้ว',sick:'ลาป่วย',personal:'ลากิจ',training:'อบรม',substitute:'มีครูแทน',activity:'กิจกรรม',no_class:'ไม่มีสอน'};
+  const today=todaySched.map(r=>{
+    const cid=String(r.class_id).trim(), p=Number(r.period);
+    const st=todayStatus[cid+'|'+p];
+    return {period:p,time:asTimeStr(r.start_time)+'–'+asTimeStr(r.end_time),
+            subject:subjLabel(String(r.subject_id).trim()),cls:className(cid),
+            status:st?ST_TH[st]||st:''};
+  });
+
+  // สรุปสอนสะสมรายวิชา (วิชาที่สอนทั้งหมด + จำนวนคาบที่สอนแล้ว) เรียงมาก→น้อย
+  const distinctSubj={};
+  sched.forEach(r=>{const sid=String(r.subject_id).trim();distinctSubj[sid]=(distinctSubj[sid]||0)+1;});
+  const bySubject=Object.keys(distinctSubj).map(sid=>({
+    label:subjLabel(sid),taught:bySubjCount[sid]||0,perWeek:distinctSubj[sid]
+  })).sort((a,b)=>b.taught-a.taught || b.perWeek-a.perWeek);
 
   let bubble;
   if(todayScheduled===0) bubble='วันนี้ไม่มีคาบสอน พักได้~';
@@ -297,17 +381,21 @@ function computeTeaching(schedule,logs){
 
   const badges=[];
   if(weekScheduled) badges.push('📚 '+weekScheduled+' คาบ/สัปดาห์');
-  if(weekTaught>=10) badges.push('🔥 สอนแล้ว '+weekTaught+' คาบสัปดาห์นี้');
+  if(totalTaught>0) badges.push('🎓 สอนสะสม '+totalTaught+' คาบ');
+  if(weekTaught>=10) badges.push('🔥 สัปดาห์นี้ '+weekTaught+' คาบ');
   if(recordPct===100&&todayScheduled) badges.push('✅ บันทึกครบวันนี้');
-  if(monthRecorded>0) badges.push('🗓️ เดือนนี้บันทึก '+monthRecorded+' คาบ');
   if(!badges.length) badges.push('🌱 เริ่มบันทึกการสอนกันเถอะ');
 
   return {
-    card:{title:'งานสอน',subtitle:'บันทึกการเข้าสอน',bubble,color:'#7cc4ff',
+    card:{title:'งานสอน',subtitle:'วันนี้วัน'+DOW_TH[schedDow]+' · '+todayScheduled+' คาบ',
+      bubble,color:'#7cc4ff',
       stats:[['คาบที่สอนวันนี้',todayTaught+' / '+todayScheduled],
              ['สัปดาห์นี้ (สอนแล้ว)',weekTaught+' คาบ'],
+             ['สอนสะสมทั้งเทอม',totalTaught+' คาบ'],
              ['บันทึกครบวันนี้',recordPct+'%']],
       progress:recordPct,badges,
+      today,bySubject,
+      links:[{label:'📝 บันทึกการสอน',url:CFG.logUrl},{label:'📅 ดูตารางสอน',url:CFG.scheduleUrl}],
       quote:todayScheduled?'ขยันสอนสุดๆ เลยครู ไปต่ออีกนิดเดียว!':'วันว่างก็พักผ่อนบ้างนะครู ☕'},
     xp:totalTaught*10
   };
@@ -315,8 +403,8 @@ function computeTeaching(schedule,logs){
 
 async function loadReal(){
   try{
-    const [schedule,logs]=await Promise.all([gviz(CFG.scheduleId),gviz(CFG.teachingLogId)]);
-    const t=computeTeaching(schedule,logs);
+    const [schedule,logs,subjects]=await Promise.all([gviz(CFG.scheduleId),gviz(CFG.teachingLogId),gviz(CFG.subjectsId)]);
+    const t=computeTeaching(schedule,logs,subjects);
     DATA.cow=t.card;
     const per=500, lvl=Math.floor(t.xp/per)+1;
     DATA.player={name:'ครูบีเค',level:lvl,xp:t.xp%per,xpMax:per};
@@ -348,11 +436,39 @@ function openPanel(k){
   document.getElementById('pHead').style.background=`linear-gradient(135deg,${d.color},${shade(d.color,-18)})`;
   document.getElementById('pHead').innerHTML=
     `<div class="ic">${ICON[k]}</div><div><h2>${d.title}</h2><p>${d.subtitle}</p></div>`;
-  document.getElementById('pBody').innerHTML=
+  let html=
     d.stats.map(s=>`<div class="stat-row"><span class="lbl">${s[0]}</span><span class="val">${s[1]}</span></div>`).join('')
     + `<div class="bar"><i style="width:${d.progress}%;background:linear-gradient(90deg,${d.color},${shade(d.color,-18)})"></i></div>`
-    + `<div class="badges">${d.badges.map(b=>`<span class="badge">${b}</span>`).join('')}</div>`
-    + `<div class="quote">💬 ${d.quote}</div>`;
+    + `<div class="badges">${d.badges.map(b=>`<span class="badge">${b}</span>`).join('')}</div>`;
+
+  // ตารางสอนวันนี้
+  if(d.today){
+    html+=`<div class="sec-h">🗓️ คาบสอนวันนี้</div>`;
+    if(d.today.length){
+      html+=`<div class="tt">`+d.today.map(r=>
+        `<div class="tt-row${r.status.startsWith('✓')?' done':''}">
+           <span class="pd">คาบ ${r.period}</span>
+           <span class="tt-main"><b>${r.subject}</b><small>${r.cls} · ${r.time}</small></span>
+           <span class="tt-st">${r.status||''}</span>
+         </div>`).join('')+`</div>`;
+    }else{
+      html+=`<div class="quote">วันนี้ไม่มีคาบสอน 🎉</div>`;
+    }
+  }
+  // สรุปสอนสะสมรายวิชา
+  if(d.bySubject&&d.bySubject.length){
+    html+=`<div class="sec-h">📊 สอนสะสมรายวิชา <small>(ตั้งแต่เปิดเทอม 15 พ.ค.)</small></div>`;
+    html+=`<div class="subj">`+d.bySubject.map(s=>
+      `<div class="subj-row"><span class="subj-n">${s.label}</span>
+        <span class="subj-v"><b>${s.taught}</b> คาบ <small>/ ${s.perWeek} ต่อสัปดาห์</small></span></div>`).join('')+`</div>`;
+  }
+  // ปุ่มลิงก์
+  if(d.links&&d.links.length){
+    html+=`<div class="acts">`+d.links.map(l=>
+      `<a class="act" href="${l.url}" target="_blank" rel="noopener">${l.label}</a>`).join('')+`</div>`;
+  }
+  html+=`<div class="quote">💬 ${d.quote}</div>`;
+  document.getElementById('pBody').innerHTML=html;
   document.getElementById('scrim').classList.add('on');
   document.getElementById('panel').classList.add('on');
 }
