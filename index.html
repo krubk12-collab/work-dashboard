@@ -60,10 +60,36 @@
   .clock .t{font-size:20px;font-weight:700;letter-spacing:1px}
   .clock .d{font-size:12px;color:#6b6890;font-weight:600}
 
+  /* ===== บอร์ดกระดาษบนผนัง ===== */
+  .board{position:absolute;z-index:4;left:50%;top:9.5%;transform:translateX(-50%) rotate(-1.3deg);
+    width:clamp(232px,19vw,290px);background:#fffdf5;border-radius:6px;cursor:pointer;
+    padding:12px 14px 14px;box-shadow:0 14px 26px rgba(45,42,74,.28),0 2px 0 #e8e2c8 inset;
+    border:1px solid #efe9d2;transition:transform .2s}
+  .board::before{content:"";position:absolute;inset:0;border-radius:6px;
+    background:repeating-linear-gradient(transparent,transparent 27px,#f0ecd8 27px,#f0ecd8 28px);opacity:.5;pointer-events:none}
+  .board:hover{transform:translateX(-50%) rotate(-1.3deg) translateY(-3px)}
+  .board-pin{position:absolute;top:-9px;left:50%;transform:translateX(-50%);width:18px;height:18px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#ff8aa0,#e23b6d);box-shadow:0 3px 5px rgba(0,0,0,.3)}
+  .board-head{font-weight:700;font-size:13.5px;color:#5a4a2a;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center}
+  .board-src{font-size:9px;font-weight:600;color:#9a9070}
+  .board-body{display:flex;flex-direction:column;gap:5px}
+  .bd-row{display:flex;align-items:center;gap:8px}
+  .bd-d{flex:0 0 auto;width:30px;display:flex;flex-direction:column;align-items:center;line-height:1;
+    color:#7a5af0}
+  .bd-row.hol .bd-d{color:#e23b3b}
+  .bd-d b{font-size:15px}.bd-d small{font-size:8px}
+  .bd-t{flex:1;font-size:11.5px;color:#3a3550;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bd-t i{font-style:normal;color:#9a97b5;font-size:10px}
+  .bd-row.today .bd-t{color:#e0922a;font-weight:700}
+  .bd-row.today{background:#fff4d8;border-radius:5px;padding:2px 4px;margin:-2px -4px}
+  .bd-empty{font-size:12px;color:#a59c7a;text-align:center;padding:8px 0}
+  .bd-more{font-size:10px;color:#a59c7a;text-align:center;margin-top:2px}
+
   /* ===== ตัวละคร ===== */
   .char{position:absolute;z-index:5;cursor:pointer;width:clamp(110px,13vw,190px);
-    transition:transform .25s ease;animation:float 3.2s ease-in-out infinite;
-    text-align:center;filter:drop-shadow(0 12px 14px rgba(0,0,0,.22))}
+    transition:transform .25s ease;animation:float 3.2s ease-in-out infinite;text-align:center;
+    /* เงาขอบรอบตัว ให้ตัวขาว (แพนด้า/แมว) เด้งออกจากพื้นหลังสีอ่อน */
+    filter:drop-shadow(0 11px 13px rgba(0,0,0,.22)) drop-shadow(0 0 2px rgba(70,50,90,.45))}
   .char:nth-child(2){animation-delay:.4s}
   .char:nth-child(3){animation-delay:.8s}
   .char:nth-child(4){animation-delay:1.2s}
@@ -188,13 +214,42 @@
   .footer{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:6;
     font-size:11px;color:rgba(45,42,74,.55);font-weight:600}
 
+  /* ===== แถบมือถือ (ซ่อนบน desktop) ===== */
+  .mwrap{display:none;flex-direction:column;gap:12px;padding:14px;background:#0e1430;flex:1}
+  .mcal{background:#161d44;border:1px solid #2b376b;border-radius:16px;padding:12px 14px}
+  .mcal-h{font-size:13px;font-weight:700;color:#cfd6ff;margin-bottom:8px;display:flex;justify-content:space-between}
+  .mcal-h .board-src{color:#8a93c8}
+  .mcal .bd-row{gap:9px;padding:5px 0}
+  .mcal .bd-d{width:34px;color:#a89cff}.mcal .bd-row.hol .bd-d{color:#ff8a8a}
+  .mcal .bd-d b{font-size:15px}.mcal .bd-t{color:#dfe3ff;font-size:12.5px}
+  .mcal .bd-row.today{background:#2a2150;border-radius:6px;padding:3px 6px;margin:0 -6px}
+  .mcal .bd-row.today .bd-t{color:#ffcf5c}
+  .mcal .bd-empty{color:#8a93c8}
+  .mnav{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .mnav-b{display:flex;align-items:center;gap:10px;background:#1b2350;border:1px solid #2b376b;border-radius:14px;
+    padding:13px 14px;color:#e6e9ff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;text-align:left}
+  .mnav-b .mi{font-size:26px}
+  .mnav-b small{display:block;font-weight:500;color:#9aa3d6;font-size:11px;margin-top:1px}
+
   @media(max-width:680px){
-    .stage{aspect-ratio:auto;min-height:100vh}
-    .xp{width:130px}
-    .char{width:90px}
-    #c-cow{left:2%;bottom:30%} #c-cat{left:26%;bottom:8%}
-    #c-rabbit{right:26%;bottom:10%} #c-panda{right:2%;bottom:31%}
-    .clock{padding:8px 12px}.clock .t{font-size:16px}
+    body{padding:0;display:flex;flex-direction:column;min-height:100vh}
+    /* คงสัดส่วน 16:9 ฉากห้องไม่ให้ซูมเพี้ยน + จัดฉากไว้บน */
+    .stage{aspect-ratio:16/9;min-height:auto;width:100%;flex:0 0 auto}
+    .char{width:52px}                        /* ตัวเล็กลงให้พอดีฉาก 16:9 */
+    .char .body{font-size:38px}
+    .char .tag{font-size:8px;padding:2px 6px}
+    .mini,.bubble,.board{display:none}       /* มือถือ: ซ่อนบอร์ดผนัง+สถิติย่อ ใช้แตะ/การ์ดล่างแทน */
+    .hud{padding:6px 9px;gap:7px}.avatar{width:34px;height:34px;font-size:20px}
+    .hud-info h1{font-size:12px}.hud-info .pmail{font-size:8px}.hud-info .lv{font-size:9px}
+    .xp{width:108px;height:9px}
+    .clock{padding:5px 9px}.clock .t{font-size:14px}.clock .d{font-size:9px}
+    .panel{width:94vw;max-height:86vh}
+    .acts{flex-wrap:wrap}.act{min-width:46%}
+    .footer{display:none}
+    .mwrap{display:flex}                      /* โชว์แถบมือถือ (ปฏิทิน + เมนู) */
+    /* ตำแหน่งตัวละครเฉพาะมือถือ ให้ครบ 4 ตัว พอดีฉาก 16:9 */
+    #c-cow{left:3%;bottom:16%} #c-cat{left:27%;bottom:10%}
+    #c-rabbit{right:27%;bottom:11%} #c-panda{right:4%;bottom:16%}
   }
 </style>
 </head>
@@ -218,6 +273,13 @@
   <div class="clock">
     <div class="t" id="clk">--:--</div>
     <div class="d" id="dte">—</div>
+  </div>
+
+  <!-- บอร์ดกระดาษบนผนัง โชว์ปฏิทินสัปดาห์นี้ (สด) -->
+  <div class="board" id="board" onclick="openPanel('panda')" title="ดูปฏิทินทั้งหมด">
+    <div class="board-pin"></div>
+    <div class="board-head">📅 สัปดาห์นี้ <span class="board-src" id="boardSrc"></span></div>
+    <div class="board-body" id="boardBody"><div class="bd-empty">กำลังโหลด…</div></div>
   </div>
 
   <!-- ตัวละคร 4 ตัว -->
@@ -246,7 +308,21 @@
     <div class="mini" id="m-panda"></div>
   </div>
 
-  <div class="footer">ห้องทำงานครูบีเค · อัปเดต <span id="upd">—</span></div>
+  <div class="footer">ห้องทำงาน Mr.Notehoo · อัปเดต <span id="upd">—</span></div>
+</div>
+
+<!-- แถบมือถือ: การ์ดปฏิทินสัปดาห์นี้ + เมนู 4 หมวด -->
+<div class="mwrap">
+  <div class="mcal" onclick="openPanel('panda')">
+    <div class="mcal-h">📅 ปฏิทินสัปดาห์นี้ <span class="board-src" id="mCalSrc"></span></div>
+    <div id="mCalBody"><div class="bd-empty">กำลังโหลด…</div></div>
+  </div>
+  <div class="mnav">
+    <button class="mnav-b" onclick="openPanel('cow')"><span class="mi">🐮</span><span>งานสอน<small>ตาราง · บันทึก</small></span></button>
+    <button class="mnav-b" onclick="openPanel('cat')"><span class="mi">🐱</span><span>เว็บ/โปรเจกต์<small>ระบบ · งานค้าง</small></span></button>
+    <button class="mnav-b" onclick="openPanel('rabbit')"><span class="mi">🐰</span><span>งานนักเรียน<small>สุขภาพ · เยี่ยมบ้าน</small></span></button>
+    <button class="mnav-b" onclick="openPanel('panda')"><span class="mi">🐼</span><span>งานส่วนตัว<small>todo · ปฏิทิน</small></span></button>
+  </div>
 </div>
 
 <!-- Panel -->
@@ -309,7 +385,8 @@ const CFG={
   // 🐼 งานส่วนตัว — A) ชีต To-do ส่วนตัว (สร้างใหม่ บัญชีโรงเรียน) + B) auto-digest จากหมวดอื่น
   personalSS:'1yU6E4Wp0fdX_NYCo_of2wSBSYvV3XMPy4zwSAOPQTOY',
   personalUrl:'https://docs.google.com/spreadsheets/d/1yU6E4Wp0fdX_NYCo_of2wSBSYvV3XMPy4zwSAOPQTOY/edit',
-  // 📅 ปฏิทินงาน (sync จาก Google Calendar krubk12 → Sheet public)
+  // 📅 ปฏิทินงาน — GAS live (สดจาก Google Calendar) + Sheet สำรอง (snapshot)
+  calApi:'https://script.google.com/macros/s/AKfycbxlu8UvAB9B1JSyI7eDz5dPvGEGF3zHlZXKvXfnMAJ5AGZQfGAQkqjqoR1gHH3YN7bE/exec',
   calendarSS:'18ZLTZKlKxBjgcJtBg7k7_LS-hUaLk82btCDSTmvMcNU',
   calendarUrl:'https://calendar.google.com/calendar/u/0/r'
 };
@@ -548,6 +625,38 @@ function computeStudents(profiles,health,visits,deeds){
   };
 }
 
+// โหลดปฏิทิน: ลอง GAS live ก่อน (สด) ถ้าไม่ได้ค่อย fallback Sheet snapshot
+let CAL_SOURCE='—';
+async function loadCalendar(){
+  try{
+    const r=await fetch(CFG.calApi,{redirect:'follow'});
+    const d=await r.json();
+    if(d&&d.ok&&Array.isArray(d.events)){ CAL_SOURCE='live'; return d.events; }
+  }catch(e){ /* GAS ยังไม่พร้อม → ใช้ Sheet */ }
+  try{ const rows=await gviz(CFG.calendarSS); CAL_SOURCE='sheet'; return rows; }
+  catch(e){ CAL_SOURCE='none'; return []; }
+}
+
+// บอร์ดกระดาษบนผนัง — โชว์ปฏิทินสัปดาห์นี้ (สด)
+const TH_MON=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const TH_DOW=['อา','จ','อ','พ','พฤ','ศ','ส'];
+function renderBoard(cal){
+  const today=fmtDate(new Date());
+  const wk=(cal&&cal.week)||[];
+  const srcTxt=CAL_SOURCE==='live'?'🟢 สด':(CAL_SOURCE==='sheet'?'📄 sync':'');
+  ['boardSrc','mCalSrc'].forEach(id=>{const s=document.getElementById(id);if(s)s.textContent=srcTxt;});
+  let inner;
+  if(!wk.length){ inner='<div class="bd-empty">ไม่มีนัดสัปดาห์นี้ 🎉</div>'; }
+  else inner=wk.slice(0,5).map(e=>{
+    const d=new Date(e.date+'T00:00:00');
+    const isToday=e.date===today;
+    return `<div class="bd-row${isToday?' today':''}${e.kind==='holiday'?' hol':''}">
+      <span class="bd-d"><b>${d.getDate()}</b><small>${TH_DOW[d.getDay()]}</small></span>
+      <span class="bd-t">${e.title}${e.time?` <i>${e.time}</i>`:''}</span></div>`;
+  }).join('')+(wk.length>5?`<div class="bd-more">+${wk.length-5} เพิ่มเติม…</div>`:'');
+  ['boardBody','mCalBody'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=inner;});
+}
+
 // จัดกลุ่ม event ปฏิทินที่ยังไม่ผ่าน → สัปดาห์นี้ / เดือนนี้ / ถัดไป
 function groupCalendar(events){
   const today=fmtDate(new Date());
@@ -659,9 +768,10 @@ async function loadReal(){
 
   // 🐼 งานส่วนตัว (A: ชีต To-do + B: auto-digest + 📅 ปฏิทิน)
   try{
-    const [todos,calEvents]=await Promise.all([gviz(CFG.personalSS),gviz(CFG.calendarSS).catch(()=>[])]);
+    const [todos,calEvents]=await Promise.all([gviz(CFG.personalSS),loadCalendar()]);
     const p=computePersonal(todos,ctx,calEvents);
     DATA.panda=p.card; xpTotal+=p.xp; anyLive=true;
+    renderBoard(p.card.calendar);                       // อัปเดตบอร์ดผนัง
     document.getElementById('c-panda').classList.add('live');
   }catch(err){ console.warn('งานส่วนตัว: โหลดไม่สำเร็จ',err); }
 
@@ -847,6 +957,8 @@ render();tick();detectAssets();loadReal();
 setInterval(tick,1000*30);
 setInterval(loadReal,1000*60*5);   // รีเฟรชข้อมูลจริงทุก 5 นาที
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel();});
+// deep-link: #cow/#cat/#rabbit/#panda เปิด panel นั้นเลย (โหลดข้อมูลก่อน)
+(function(){const k=location.hash.replace('#','');if(['cow','cat','rabbit','panda'].includes(k))setTimeout(()=>openPanel(k),2600);})();
 </script>
 </body>
 </html>
