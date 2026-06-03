@@ -51,7 +51,8 @@
   .avatar{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font-size:30px;
     background:linear-gradient(135deg,var(--gold),var(--gold-d));box-shadow:0 4px 10px rgba(245,166,35,.5)}
   .hud-info h1{font-size:17px;font-weight:700;line-height:1.1}
-  .hud-info .lv{font-size:12px;color:#6b6890;font-weight:600}
+  .hud-info .pmail{font-size:11px;color:#9a97b5;font-weight:600;margin-top:1px}
+  .hud-info .lv{font-size:12px;color:#6b6890;font-weight:600;margin-top:3px}
   .xp{margin-top:5px;width:200px;height:12px;background:#eceaf6;border-radius:8px;overflow:hidden}
   .xp>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffcf5c,#f5a623);border-radius:8px;transition:width 1.4s cubic-bezier(.2,.8,.2,1)}
   .clock{position:absolute;right:3%;top:4%;z-index:6;background:var(--card);backdrop-filter:blur(8px);
@@ -163,8 +164,21 @@
   .td-tx small{color:#a7a4c0;font-size:11px}
   .todo-it.is-done .td-tx{color:#a7a4c0}
   .todo-it.is-done .td-dot{background:#27d367!important}
+  /* ปฏิทิน */
+  .cal{padding:0 16px 6px}
+  .cal-row{display:flex;align-items:center;gap:11px;padding:9px 8px;border-radius:12px;text-decoration:none}
+  .cal-row:nth-child(odd){background:#f7f6fd}
+  .cal-d{flex:0 0 auto;width:42px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    border-radius:10px;padding:5px 0;background:#efeafc;color:#7a5af0;line-height:1.1}
+  .cal-d.holiday{background:#ffe6e6;color:#e23b3b}
+  .cal-d b{font-size:16px}.cal-d small{font-size:9px}
+  .cal-main{flex:1;display:flex;flex-direction:column;line-height:1.3;min-width:0}
+  .cal-main b{font-size:13px;color:#2d2a4a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cal-main small{font-size:11px;color:#8b88a8}
+  .cal-go{flex:0 0 auto;color:#a89cff;font-weight:700}
   /* ปุ่มลิงก์ */
   .acts{display:flex;gap:10px;padding:14px 24px 4px}
+  .act:nth-child(3){background:linear-gradient(135deg,#a0e7a0,#5cc97a);box-shadow:0 6px 14px rgba(92,201,122,.35)}
   .act{flex:1;text-align:center;text-decoration:none;font-weight:700;font-size:13.5px;
     padding:12px;border-radius:14px;color:#fff;background:linear-gradient(135deg,#7cc4ff,#4aa3f0);
     box-shadow:0 6px 14px rgba(74,163,240,.35);transition:transform .15s}
@@ -195,7 +209,8 @@
   <div class="hud">
     <div class="avatar">🧑‍🏫</div>
     <div class="hud-info">
-      <h1>ครูบีเค</h1>
+      <h1 id="pName">Mr.Notehoo</h1>
+      <div class="pmail" id="pMail">Krubk12@nonedu2.go.th</div>
       <div class="lv">Lv. <span id="lv">1</span> · <span id="xpText">0/100 XP</span></div>
       <div class="xp"><i id="xpBar"></i></div>
     </div>
@@ -251,7 +266,7 @@ const COLORS={cow:'#7cc4ff',cat:'#ff9eb5',rabbit:'#a0e7a0',panda:'#c9b3ff'};
 const ICON={cow:'🐮',cat:'🐱',rabbit:'🐰',panda:'🐼'};
 
 const DATA={
-  player:{name:'ครูบีเค',level:7,xp:340,xpMax:500},
+  player:{name:'Mr.Notehoo',email:'Krubk12@nonedu2.go.th',level:7,xp:340,xpMax:500},
   cow:{ title:'งานสอน', subtitle:'บันทึกการเข้าสอน',
     bubble:'วันนี้สอนแล้ว 3 คาบ!', color:'#7cc4ff',
     stats:[['คาบที่สอนวันนี้','3 / 5'],['สัปดาห์นี้','18 คาบ'],['บันทึกครบ','92%']],
@@ -293,7 +308,10 @@ const CFG={
   studentUrl:'https://script.google.com/macros/s/AKfycbxUli1ed9xM0jC5-lytK51i4Pn9-YEMkfX9LGCjVvzJraLeIvEVzr-8AjugAbaECYYwGQ/exec',
   // 🐼 งานส่วนตัว — A) ชีต To-do ส่วนตัว (สร้างใหม่ บัญชีโรงเรียน) + B) auto-digest จากหมวดอื่น
   personalSS:'1yU6E4Wp0fdX_NYCo_of2wSBSYvV3XMPy4zwSAOPQTOY',
-  personalUrl:'https://docs.google.com/spreadsheets/d/1yU6E4Wp0fdX_NYCo_of2wSBSYvV3XMPy4zwSAOPQTOY/edit'
+  personalUrl:'https://docs.google.com/spreadsheets/d/1yU6E4Wp0fdX_NYCo_of2wSBSYvV3XMPy4zwSAOPQTOY/edit',
+  // 📅 ปฏิทินงาน (sync จาก Google Calendar krubk12 → Sheet public)
+  calendarSS:'18ZLTZKlKxBjgcJtBg7k7_LS-hUaLk82btCDSTmvMcNU',
+  calendarUrl:'https://calendar.google.com/calendar/u/0/r'
 };
 const CLASS_MAP={C17:'ม.1/1',C18:'ม.1/2',C19:'ม.2/1',C20:'ม.2/2',C21:'ม.3/1',C22:'ม.3/2'};
 const DOW_TH=['','จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์','อาทิตย์'];
@@ -530,8 +548,26 @@ function computeStudents(profiles,health,visits,deeds){
   };
 }
 
-// 🐼 คำนวณการ์ดงานส่วนตัว = A) ชีต To-do ส่วนตัว + B) auto-digest จากหมวดอื่น
-function computePersonal(todos,ctx){
+// จัดกลุ่ม event ปฏิทินที่ยังไม่ผ่าน → สัปดาห์นี้ / เดือนนี้ / ถัดไป
+function groupCalendar(events){
+  const today=fmtDate(new Date());
+  const in7=new Date();in7.setDate(in7.getDate()+7);const in7s=fmtDate(in7);
+  const mk=today.slice(0,7);
+  const week=[],month=[],later=[];
+  (events||[]).map(e=>({date:asDateStr(e.date),time:e.all_day&&String(e.all_day).toUpperCase()==='TRUE'?'':asTimeStr(e.time),
+      title:e.title,allDay:String(e.all_day).toUpperCase()==='TRUE',kind:e.kind||'work',link:e.link||''}))
+    .filter(e=>e.date && e.date>=today)
+    .sort((a,b)=>a.date.localeCompare(b.date)||(a.time||'').localeCompare(b.time||''))
+    .forEach(e=>{
+      if(e.date<=in7s) week.push(e);
+      else if(e.date.slice(0,7)===mk) month.push(e);
+      else later.push(e);
+    });
+  return {week,month,later};
+}
+
+// 🐼 คำนวณการ์ดงานส่วนตัว = A) ชีต To-do ส่วนตัว + B) auto-digest + 📅 ปฏิทิน
+function computePersonal(todos,ctx,calEvents){
   const today=fmtDate(new Date());
   const done=v=>['true','done','yes','1','เสร็จ'].includes(String(v).trim().toLowerCase());
   const items=todos.filter(t=>t.task&&String(t.task).trim());
@@ -554,12 +590,18 @@ function computePersonal(todos,ctx){
   (ctx.proj&&ctx.proj.highTodos||[]).forEach(t=>
     auto.push({icon:'🔴',text:(t.app?t.app+': ':'')+t.text,url:CFG.todosSheetUrl}));
 
+  // ปฏิทิน: จัดกลุ่ม + เอา event "วันนี้" (ที่เป็นงาน) ใส่ auto-digest
+  const cal=groupCalendar(calEvents);
+  cal.week.filter(e=>e.date===today&&e.kind!=='holiday').forEach(e=>
+    auto.push({icon:'📅',text:'วันนี้: '+e.title+(e.time?' ('+e.time+' น.)':''),url:e.link}));
+
   const totalToday=open.length+auto.length;
   const pct=items.length?Math.round(doneCnt/items.length*100):(auto.length?0:100);
 
   const badges=[];
   if(open.length) badges.push('📝 ค้าง '+open.length+' งาน');
   if(doneCnt) badges.push('✅ เสร็จ '+doneCnt+' งาน');
+  if(cal.week.length) badges.push('📅 สัปดาห์นี้ '+cal.week.length+' นัด');
   if(auto.length) badges.push('🔔 เตือน '+auto.length+' รายการ');
   if(!badges.length) badges.push('🎉 วันนี้เคลียร์หมดแล้ว');
 
@@ -575,8 +617,8 @@ function computePersonal(todos,ctx){
              ['เสร็จแล้ว',doneCnt+' รายการ'],
              ['เตือนจากระบบ',auto.length+' รายการ'],
              ['รวมต้องทำวันนี้',totalToday+' รายการ']],
-      progress:pct,badges,personal,autoItems:auto,
-      links:[{label:'✏️ แก้งานส่วนตัว',url:CFG.personalUrl}],
+      progress:pct,badges,personal,autoItems:auto,calendar:cal,
+      links:[{label:'✏️ แก้งานส่วนตัว',url:CFG.personalUrl},{label:'📅 เปิดปฏิทิน',url:CFG.calendarUrl}],
       quote:totalToday?'ค่อยๆ ทำทีละอย่างนะ พักได้ก็พัก เดี๋ยวก็เสร็จเอง 🐼':'เยี่ยมมาก! เคลียร์งานวันนี้หมดแล้ว พักผ่อนเลย 🎍'},
     xp:doneCnt*5
   };
@@ -615,10 +657,10 @@ async function loadReal(){
     document.getElementById('c-rabbit').classList.add('live');
   }catch(err){ console.warn('งานนักเรียน: โหลดไม่สำเร็จ',err); }
 
-  // 🐼 งานส่วนตัว (A: ชีต To-do + B: auto-digest จาก ctx)
+  // 🐼 งานส่วนตัว (A: ชีต To-do + B: auto-digest + 📅 ปฏิทิน)
   try{
-    const todos=await gviz(CFG.personalSS);
-    const p=computePersonal(todos,ctx);
+    const [todos,calEvents]=await Promise.all([gviz(CFG.personalSS),gviz(CFG.calendarSS).catch(()=>[])]);
+    const p=computePersonal(todos,ctx,calEvents);
     DATA.panda=p.card; xpTotal+=p.xp; anyLive=true;
     document.getElementById('c-panda').classList.add('live');
   }catch(err){ console.warn('งานส่วนตัว: โหลดไม่สำเร็จ',err); }
@@ -626,7 +668,7 @@ async function loadReal(){
   // ผู้เล่น (รวม XP ทุกหมวด)
   if(anyLive){
     const per=500, lvl=Math.floor(xpTotal/per)+1;
-    DATA.player={name:'ครูบีเค',level:lvl,xp:xpTotal%per,xpMax:per};
+    DATA.player={name:'Mr.Notehoo',email:'Krubk12@nonedu2.go.th',level:lvl,xp:xpTotal%per,xpMax:per};
   }
   render();
 }
@@ -634,6 +676,8 @@ async function loadReal(){
 /* ---- render ---- */
 function render(){
   const p=DATA.player;
+  if(p.name) document.getElementById('pName').textContent=p.name;
+  if(p.email) document.getElementById('pMail').textContent=p.email;
   document.getElementById('lv').textContent=p.level;
   document.getElementById('xpText').textContent=`${p.xp}/${p.xpMax} XP`;
   setTimeout(()=>document.getElementById('xpBar').style.width=(p.xp/p.xpMax*100)+'%',200);
@@ -682,6 +726,28 @@ function openPanel(k){
          </div>`).join('')+`</div>`;
     }else{
       html+=`<div class="quote">ยังไม่มีงานส่วนตัว — กด "แก้งานส่วนตัว" เพื่อเพิ่ม</div>`;
+    }
+  }
+  // 📅 ปฏิทินงาน (สัปดาห์นี้ / เดือนนี้ / ถัดไป)
+  if(d.calendar){
+    const grp=(label,arr)=>{
+      if(!arr||!arr.length) return '';
+      return `<div class="sec-h">📅 ${label} <small>(${arr.length})</small></div><div class="cal">`+
+        arr.map(e=>{
+          const dt=new Date(e.date+'T00:00:00');
+          const dd=dt.getDate()+' '+['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'][dt.getMonth()];
+          const inner=`<span class="cal-d ${e.kind}"><b>${dt.getDate()}</b><small>${['อา','จ','อ','พ','พฤ','ศ','ส'][dt.getDay()]}</small></span>
+             <span class="cal-main"><b>${e.title}</b><small>${dd}${e.time?' · '+e.time+' น.':e.allDay?' · ทั้งวัน':''}</small></span>`;
+          return e.link
+            ? `<a class="cal-row" href="${e.link}" target="_blank" rel="noopener">${inner}<span class="cal-go">↗</span></a>`
+            : `<div class="cal-row">${inner}</div>`;
+        }).join('')+`</div>`;
+    };
+    const c=d.calendar;
+    if((c.week&&c.week.length)||(c.month&&c.month.length)||(c.later&&c.later.length)){
+      html+=grp('สัปดาห์นี้',c.week)+grp('เดือนนี้',c.month)+grp('ถัดไป',c.later);
+    }else{
+      html+=`<div class="sec-h">📅 ปฏิทินงาน</div><div class="quote">ไม่มีนัดหมายที่จะถึง 🎉</div>`;
     }
   }
   // 🐼 เตือนจากระบบ (auto-digest)
