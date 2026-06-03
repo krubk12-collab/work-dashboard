@@ -55,7 +55,12 @@
   .hud-info .lv{font-size:12px;color:#6b6890;font-weight:600;margin-top:3px}
   .xp{margin-top:5px;width:200px;height:12px;background:#eceaf6;border-radius:8px;overflow:hidden}
   .xp>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffcf5c,#f5a623);border-radius:8px;transition:width 1.4s cubic-bezier(.2,.8,.2,1)}
-  .clock{position:absolute;right:3%;top:4%;z-index:6;background:var(--card);backdrop-filter:blur(8px);
+  .topright{position:absolute;right:3%;top:4%;z-index:7;display:flex;gap:9px;align-items:center}
+  .mbtn{width:42px;height:42px;border:0;border-radius:14px;cursor:pointer;font-size:19px;
+    background:var(--card);backdrop-filter:blur(8px);box-shadow:var(--shadow);transition:transform .15s}
+  .mbtn:hover{transform:scale(1.08)}
+  .mbtn.on{background:linear-gradient(135deg,var(--gold),var(--gold-d))}
+  .clock{background:var(--card);backdrop-filter:blur(8px);
     padding:10px 16px;border-radius:16px;box-shadow:var(--shadow);text-align:right}
   .clock .t{font-size:20px;font-weight:700;letter-spacing:1px}
   .clock .d{font-size:12px;color:#6b6890;font-weight:600}
@@ -211,8 +216,27 @@
   .act:nth-child(2){background:linear-gradient(135deg,#ffcf5c,#f5a623);box-shadow:0 6px 14px rgba(245,166,35,.35)}
   .act:active{transform:scale(.97)}
 
-  .footer{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:6;
-    font-size:11px;color:rgba(45,42,74,.55);font-weight:600}
+  .footer{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);z-index:6;
+    font-size:11px;color:rgba(45,42,74,.55);font-weight:600;pointer-events:none}
+
+  /* ===== ติ๊กเกอร์ NAV กบข. ===== */
+  .ticker{position:absolute;left:0;right:0;bottom:22px;z-index:6;display:flex;align-items:center;gap:0;
+    background:rgba(28,24,54,.82);backdrop-filter:blur(6px);height:32px;cursor:pointer;overflow:hidden}
+  .ticker-tag{flex:0 0 auto;background:linear-gradient(135deg,var(--gold),var(--gold-d));color:#3a2d00;
+    font-weight:800;font-size:12px;padding:0 12px;height:100%;display:flex;align-items:center;z-index:2;
+    box-shadow:6px 0 12px rgba(0,0,0,.25)}
+  .ticker-win{flex:1;overflow:hidden;position:relative;height:100%}
+  .ticker-track{position:absolute;white-space:nowrap;height:100%;display:flex;align-items:center;
+    font-size:12px;font-weight:600;color:#fef9ec;animation:scrollx 40s linear infinite;will-change:transform}
+  .ticker:hover .ticker-track{animation-play-state:paused}
+  .tk-item{padding:0 18px;display:inline-flex;gap:6px;align-items:center}
+  .tk-item b{color:#fff}
+  .tk-up{color:#5cf08a}.tk-dn{color:#ff7a8f}.tk-eq{color:#b9b4d6}
+  .tk-sep{color:#5a5480}
+  @keyframes scrollx{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+  /* กล่องคำพูดอัตโนมัติ (สลับกันพูด) */
+  .char.say .bubble{opacity:1;bottom:86%}
 
   /* ===== แถบมือถือ (ซ่อนบน desktop) ===== */
   .mwrap{display:none;flex-direction:column;gap:12px;padding:14px;background:#0e1430;flex:1}
@@ -247,9 +271,12 @@
     .acts{flex-wrap:wrap}.act{min-width:46%}
     .footer{display:none}
     .mwrap{display:flex}                      /* โชว์แถบมือถือ (ปฏิทิน + เมนู) */
-    /* ตำแหน่งตัวละครเฉพาะมือถือ ให้ครบ 4 ตัว พอดีฉาก 16:9 */
-    #c-cow{left:3%;bottom:16%} #c-cat{left:27%;bottom:10%}
-    #c-rabbit{right:27%;bottom:11%} #c-panda{right:4%;bottom:16%}
+    /* ตำแหน่งตัวละครเฉพาะมือถือ ให้ครบ 4 ตัว + ยกพ้นติ๊กเกอร์ */
+    #c-cow{left:3%;bottom:22%} #c-cat{left:27%;bottom:17%}
+    #c-rabbit{right:27%;bottom:18%} #c-panda{right:4%;bottom:22%}
+    .mbtn{width:34px;height:34px;font-size:16px;border-radius:11px}
+    .topright{gap:6px}
+    .ticker{bottom:0;height:26px}.ticker-tag{font-size:10px;padding:0 8px}.ticker-track{font-size:10px}
   }
 </style>
 </head>
@@ -270,10 +297,14 @@
       <div class="xp"><i id="xpBar"></i></div>
     </div>
   </div>
-  <div class="clock">
-    <div class="t" id="clk">--:--</div>
-    <div class="d" id="dte">—</div>
+  <div class="topright">
+    <button class="mbtn" id="musicBtn" onclick="toggleMusic()" title="เปิด/ปิดเพลง">🔈</button>
+    <div class="clock">
+      <div class="t" id="clk">--:--</div>
+      <div class="d" id="dte">—</div>
+    </div>
   </div>
+  <audio id="bgm" src="assets/bgm.mp3" loop preload="none"></audio>
 
   <!-- บอร์ดกระดาษบนผนัง โชว์ปฏิทินสัปดาห์นี้ (สด) -->
   <div class="board" id="board" onclick="openPanel('panda')" title="ดูปฏิทินทั้งหมด">
@@ -306,6 +337,12 @@
     <div class="body">🐼</div><img src="assets/panda.png" alt="แพนด้า">
     <div class="tag">งานส่วนตัว</div>
     <div class="mini" id="m-panda"></div>
+  </div>
+
+  <!-- ติ๊กเกอร์ราคา NAV กบข. วิ่ง -->
+  <div class="ticker" id="ticker" onclick="window.open('https://www.gpf.or.th','_blank')" title="กบข.">
+    <span class="ticker-tag">📈 NAV กบข.</span>
+    <div class="ticker-win"><div class="ticker-track" id="tickerTrack">กำลังโหลดราคา…</div></div>
   </div>
 
   <div class="footer">ห้องทำงาน Mr.Notehoo · อัปเดต <span id="upd">—</span></div>
@@ -781,6 +818,69 @@ async function loadReal(){
     DATA.player={name:'Mr.Notehoo',email:'Krubk12@nonedu2.go.th',level:lvl,xp:xpTotal%per,xpMax:per};
   }
   render();
+  buildSpeech();   // อัปเดตบทพูดอัตโนมัติจากข้อมูลจริง
+}
+
+/* ===== 🎵 เพลงประกอบ (มี bgm.mp3 ใช้ไฟล์ ไม่มีก็สังเคราะห์เสียงกล่องดนตรี) ===== */
+let actx,musicOn=false,mTimer,useSynth=false;
+const PENTA=[523.25,587.33,659.25,783.99,880.0,1046.5];
+function setMBtn(){const b=document.getElementById('musicBtn');if(!b)return;b.textContent=musicOn?'🎵':'🔈';b.classList.toggle('on',musicOn);}
+function synthNote(f,t,d,g){const o=actx.createOscillator(),ga=actx.createGain();o.type='sine';o.frequency.value=f;o.connect(ga);ga.connect(actx.destination);ga.gain.setValueAtTime(0,t);ga.gain.linearRampToValueAtTime(g,t+0.03);ga.gain.exponentialRampToValueAtTime(0.0001,t+d);o.start(t);o.stop(t+d);}
+function synthTick(){if(!musicOn||!useSynth)return;const t=actx.currentTime;const f=PENTA[Math.floor(Math.random()*PENTA.length)];synthNote(f,t,1.9,0.10);if(Math.random()<0.35)synthNote(f/2,t,2.4,0.05);mTimer=setTimeout(synthTick,850+Math.random()*800);}
+function toggleMusic(){
+  musicOn=!musicOn;setMBtn();
+  if(musicOn){
+    const bgm=document.getElementById('bgm');bgm.volume=0.45;
+    bgm.play().then(()=>{useSynth=false;}).catch(()=>{          // ไม่มีไฟล์/เล่นไม่ได้ → กล่องดนตรีสังเคราะห์
+      useSynth=true;if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)();actx.resume();synthTick();
+    });
+  }else{ try{document.getElementById('bgm').pause();}catch(e){} useSynth=false;clearTimeout(mTimer); }
+}
+
+/* ===== 💬 กล่องคำพูดอัตโนมัติ (สลับกันพูดตามข้อมูลจริง) ===== */
+let SPEECH={},spIdx=0,spStarted=false;
+function buildSpeech(){
+  const s={cow:[],cat:[],rabbit:[],panda:[]};
+  const C=DATA.cow;if(C){if(C.today&&C.today.length){const n=C.today[0];s.cow.push('เช้านี้มีสอน คาบ '+n.period+' '+n.subject+'!');}s.cow.push(C.bubble);}
+  const K=DATA.cat;if(K){s.cat.push(K.bubble);if(K.todos&&K.todos[0])s.cat.push('อย่าลืม: '+K.todos[0].text);}
+  const R=DATA.rabbit;if(R){s.rabbit.push(R.bubble);}
+  const P=DATA.panda;if(P){s.panda.push(P.bubble);if(P.calendar&&P.calendar.week)P.calendar.week.filter(e=>e.kind!=='holiday').slice(0,2).forEach(e=>s.panda.push('อย่าลืม: '+e.title+(e.time?' '+e.time+' น.':'')));}
+  Object.keys(s).forEach(k=>s[k]=s[k].filter(Boolean));
+  SPEECH=s;
+  if(!spStarted){spStarted=true;setTimeout(rotateSpeech,1800);setInterval(rotateSpeech,5600);}
+}
+function rotateSpeech(){
+  if(window.matchMedia&&window.matchMedia('(max-width:680px)').matches)return;  // มือถือใช้การ์ดแทน
+  const order=['cow','cat','rabbit','panda'].filter(k=>SPEECH[k]&&SPEECH[k].length);
+  if(!order.length)return;
+  document.querySelectorAll('.char.say').forEach(c=>c.classList.remove('say'));
+  const k=order[spIdx%order.length];spIdx++;
+  const arr=SPEECH[k],txt=arr[Math.floor(Math.random()*arr.length)];
+  const el=document.getElementById('c-'+k),b=document.getElementById('b-'+k);
+  if(el&&b){b.textContent=txt;el.classList.add('say');setTimeout(()=>el.classList.remove('say'),4400);}
+}
+
+/* ===== 📈 ติ๊กเกอร์ NAV กบข. (วิ่ง) ===== */
+async function loadGPF(){
+  try{
+    const rows=await gviz('1tIGOFFP9Ef8x2RJ4hdLBHPyB2lRW4-H6mtXZNwc9HfM','รวม');
+    if(!rows.length)return;
+    const cols=Object.keys(rows[0]);
+    const planCols=cols.filter(c=>c&&c.indexOf('แผน')===0);
+    const last=rows[rows.length-1],prev=rows[rows.length-2]||{};
+    const num=v=>parseFloat(String(v==null?'':v).replace(/,/g,''));
+    const items=[];
+    planCols.forEach(pc=>{
+      const v=num(last[pc]); if(!isFinite(v)||!v)return;
+      const pv=num(prev[pc]); let cls='tk-eq',ar='–',dl='';
+      if(isFinite(pv)&&pv){const d=v-pv;if(d>0.00005){cls='tk-up';ar='▲';}else if(d<-0.00005){cls='tk-dn';ar='▼';}dl=(d>=0?'+':'')+d.toFixed(2);}
+      items.push(`<span class="tk-item">${pc.replace('แผน','').trim()} <b>${v.toFixed(4)}</b> <span class="${cls}">${ar}${dl}</span></span>`);
+    });
+    if(!items.length)return;
+    const block=items.join('<span class="tk-sep">•</span>')+'<span class="tk-sep">•</span>';
+    document.getElementById('tickerTrack').innerHTML=block+block;   // ซ้ำ 2 ชุด ให้วนต่อเนื่อง (-50%)
+    const dc=cols[0]; if(last[dc]){const tag=document.querySelector('.ticker-tag');if(tag)tag.textContent='📈 NAV กบข. '+asDateStr(last[dc]).split('-').reverse().join('/');}
+  }catch(e){ console.warn('GPF ticker:',e); const t=document.getElementById('ticker'); if(t)t.style.display='none'; }
 }
 
 /* ---- render ---- */
@@ -953,7 +1053,7 @@ function detectAssets(){
   bg.src='assets/room.png';
 }
 
-render();tick();detectAssets();loadReal();
+render();tick();detectAssets();loadReal();loadGPF();
 setInterval(tick,1000*30);
 setInterval(loadReal,1000*60*5);   // รีเฟรชข้อมูลจริงทุก 5 นาที
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel();});
