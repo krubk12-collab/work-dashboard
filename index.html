@@ -160,6 +160,9 @@
   .todo-it.high .td-dot{background:#ef4444}.todo-it.medium .td-dot{background:#f5a623}.todo-it.low .td-dot{background:#3b82f6}
   .td-tx{font-size:12.5px;color:#4a4770;line-height:1.4}
   .td-tx b{color:#2d2a4a}
+  .td-tx small{color:#a7a4c0;font-size:11px}
+  .todo-it.is-done .td-tx{color:#a7a4c0}
+  .todo-it.is-done .td-dot{background:#27d367!important}
   /* ปุ่มลิงก์ */
   .acts{display:flex;gap:10px;padding:14px 24px 4px}
   .act{flex:1;text-align:center;text-decoration:none;font-weight:700;font-size:13.5px;
@@ -287,7 +290,10 @@ const CFG={
   todosSheetUrl:'https://docs.google.com/spreadsheets/d/1DlRZ6Q4H6XrGB4bFLz9fTs8wo9ZSQSvhaubdz7P2980/edit',
   // 🐰 งานนักเรียน — student_profile (gviz หลายชีต)
   studentSS:'1xOdkgx-jJffJn8_1qbVhKZTcCpNlxCkd0bAfADe-3Lg',
-  studentUrl:'https://script.google.com/macros/s/AKfycbxUli1ed9xM0jC5-lytK51i4Pn9-YEMkfX9LGCjVvzJraLeIvEVzr-8AjugAbaECYYwGQ/exec'
+  studentUrl:'https://script.google.com/macros/s/AKfycbxUli1ed9xM0jC5-lytK51i4Pn9-YEMkfX9LGCjVvzJraLeIvEVzr-8AjugAbaECYYwGQ/exec',
+  // 🐼 งานส่วนตัว — A) ชีต To-do ส่วนตัว (สร้างใหม่ บัญชีโรงเรียน) + B) auto-digest จากหมวดอื่น
+  personalSS:'1yU6E4Wp0fdX_NYCo_of2wSBSYvV3XMPy4zwSAOPQTOY',
+  personalUrl:'https://docs.google.com/spreadsheets/d/1yU6E4Wp0fdX_NYCo_of2wSBSYvV3XMPy4zwSAOPQTOY/edit'
 };
 const CLASS_MAP={C17:'ม.1/1',C18:'ม.1/2',C19:'ม.2/1',C20:'ม.2/2',C21:'ม.3/1',C22:'ม.3/2'};
 const DOW_TH=['','จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์','อาทิตย์'];
@@ -424,7 +430,8 @@ function computeTeaching(schedule,logs,subjects){
       today,bySubject,
       links:[{label:'📝 บันทึกการสอน',url:CFG.logUrl},{label:'📅 ดูตารางสอน',url:CFG.scheduleUrl}],
       quote:todayScheduled?'ขยันสอนสุดๆ เลยครู ไปต่ออีกนิดเดียว!':'วันว่างก็พักผ่อนบ้างนะครู ☕'},
-    xp:totalTaught*10
+    xp:totalTaught*10,
+    summary:{todayScheduled,todayRecorded,todayPending:Math.max(0,todayScheduled-todayRecorded)}
   };
 }
 
@@ -466,7 +473,8 @@ function computeProjects(d){
       progress:pct,badges,projects,todos,
       links:[{label:'✏️ แก้งานค้าง',url:CFG.todosSheetUrl}],
       quote:openTodos.length?'ค่อยๆ เคลียร์ทีละงานนะ เดี๋ยวก็หมด 🐾':'เก่งมาก ดูแลระบบได้เนี้ยบเลย!'},
-    xp:active*15
+    xp:active*15,
+    summary:{highTodos:todos.filter(t=>t.priority==='high'),openTodos:openTodos.length}
   };
 }
 
@@ -517,18 +525,72 @@ function computeStudents(profiles,health,visits,deeds){
       healthToday:healthList,goodDeeds,
       links:[{label:'👧 เปิดระบบนักเรียน',url:CFG.studentUrl}],
       quote:visitedStu<totalProfiles?'เยี่ยมบ้านให้ครบทุกคนนะ น้องๆ รออยู่ 🏠':'ดูแลน้องๆ ครบทุกคนเลย เยี่ยมมาก!'},
-    xp:myDeeds.length*5+myVisits.length*10+myHealth.length*2
+    xp:myDeeds.length*5+myVisits.length*10+myHealth.length*2,
+    summary:{totalProfiles,visitedStu,pendingVisits:Math.max(0,totalProfiles-visitedStu),healthTodayStu}
+  };
+}
+
+// 🐼 คำนวณการ์ดงานส่วนตัว = A) ชีต To-do ส่วนตัว + B) auto-digest จากหมวดอื่น
+function computePersonal(todos,ctx){
+  const today=fmtDate(new Date());
+  const done=v=>['true','done','yes','1','เสร็จ'].includes(String(v).trim().toLowerCase());
+  const items=todos.filter(t=>t.task&&String(t.task).trim());
+  const open=items.filter(t=>!done(t.done));
+  const doneCnt=items.length-open.length;
+  const rank={high:0,medium:1,low:2};
+  const personal=items.slice().sort((a,b)=>
+      (done(a.done)?1:0)-(done(b.done)?1:0) || (rank[a.priority]??3)-(rank[b.priority]??3))
+    .map(t=>({priority:(t.priority||'low'),text:t.task,done:done(t.done),
+      due:t.due_date?asDateStr(t.due_date):'',note:t.note||''}));
+
+  // B) auto-digest จากหมวดอื่น
+  const auto=[];
+  if(ctx.teach&&ctx.teach.todayPending>0)
+    auto.push({icon:'📝',text:'บันทึกการสอนวันนี้อีก '+ctx.teach.todayPending+' คาบ',url:CFG.logUrl});
+  if(ctx.student&&ctx.student.pendingVisits>0)
+    auto.push({icon:'🏠',text:'เยี่ยมบ้านยังไม่ครบ — เหลือ '+ctx.student.pendingVisits+' คน',url:CFG.studentUrl});
+  if(ctx.student&&ctx.student.healthTodayStu===0)
+    auto.push({icon:'🩺',text:'วันนี้ยังไม่ได้ตรวจสุขภาพนักเรียน',url:CFG.studentUrl});
+  (ctx.proj&&ctx.proj.highTodos||[]).forEach(t=>
+    auto.push({icon:'🔴',text:(t.app?t.app+': ':'')+t.text,url:CFG.todosSheetUrl}));
+
+  const totalToday=open.length+auto.length;
+  const pct=items.length?Math.round(doneCnt/items.length*100):(auto.length?0:100);
+
+  const badges=[];
+  if(open.length) badges.push('📝 ค้าง '+open.length+' งาน');
+  if(doneCnt) badges.push('✅ เสร็จ '+doneCnt+' งาน');
+  if(auto.length) badges.push('🔔 เตือน '+auto.length+' รายการ');
+  if(!badges.length) badges.push('🎉 วันนี้เคลียร์หมดแล้ว');
+
+  let bubble;
+  if(totalToday===0) bubble='วันนี้ไม่มีงานค้าง พักผ่อนได้เลย 🎍';
+  else if(auto.length) bubble='มีงานเตือน '+auto.length+' + ส่วนตัว '+open.length+' รายการ';
+  else bubble='งานส่วนตัวค้าง '+open.length+' รายการ';
+
+  return {
+    card:{title:'งานส่วนตัว',subtitle:'วันนี้ '+totalToday+' รายการ · เสร็จ '+doneCnt,
+      color:'#c9b3ff',bubble,
+      stats:[['งานส่วนตัว (ค้าง)',open.length+' / '+items.length],
+             ['เสร็จแล้ว',doneCnt+' รายการ'],
+             ['เตือนจากระบบ',auto.length+' รายการ'],
+             ['รวมต้องทำวันนี้',totalToday+' รายการ']],
+      progress:pct,badges,personal,autoItems:auto,
+      links:[{label:'✏️ แก้งานส่วนตัว',url:CFG.personalUrl}],
+      quote:totalToday?'ค่อยๆ ทำทีละอย่างนะ พักได้ก็พัก เดี๋ยวก็เสร็จเอง 🐼':'เยี่ยมมาก! เคลียร์งานวันนี้หมดแล้ว พักผ่อนเลย 🎍'},
+    xp:doneCnt*5
   };
 }
 
 async function loadReal(){
   let xpTotal=0, anyLive=false;
+  const ctx={};   // summary จากแต่ละหมวด ไว้ทำ auto-digest ของแพนด้า
 
   // 🐮 งานสอน (gviz)
   try{
     const [schedule,logs,subjects]=await Promise.all([gviz(CFG.scheduleId),gviz(CFG.teachingLogId),gviz(CFG.subjectsId)]);
     const t=computeTeaching(schedule,logs,subjects);
-    DATA.cow=t.card; xpTotal+=t.xp; anyLive=true;
+    DATA.cow=t.card; xpTotal+=t.xp; anyLive=true; ctx.teach=t.summary;
     document.getElementById('c-cow').classList.add('live');
   }catch(err){ console.warn('งานสอน: โหลดไม่สำเร็จ',err); }
 
@@ -538,7 +600,7 @@ async function loadReal(){
     const d=await r.json();
     if(d&&d.success){
       const c=computeProjects(d);
-      DATA.cat=c.card; xpTotal+=c.xp; anyLive=true;
+      DATA.cat=c.card; xpTotal+=c.xp; anyLive=true; ctx.proj=c.summary;
       document.getElementById('c-cat').classList.add('live');
     }
   }catch(err){ console.warn('เว็บ/โปรเจกต์: โหลดไม่สำเร็จ',err); }
@@ -549,9 +611,17 @@ async function loadReal(){
       gviz(CFG.studentSS,'StudentProfiles'),gviz(CFG.studentSS,'HealthCheck'),
       gviz(CFG.studentSS,'HomeVisit'),gviz(CFG.studentSS,'GoodDeeds')]);
     const s=computeStudents(profiles,health,visits,deeds);
-    DATA.rabbit=s.card; xpTotal+=s.xp; anyLive=true;
+    DATA.rabbit=s.card; xpTotal+=s.xp; anyLive=true; ctx.student=s.summary;
     document.getElementById('c-rabbit').classList.add('live');
   }catch(err){ console.warn('งานนักเรียน: โหลดไม่สำเร็จ',err); }
+
+  // 🐼 งานส่วนตัว (A: ชีต To-do + B: auto-digest จาก ctx)
+  try{
+    const todos=await gviz(CFG.personalSS);
+    const p=computePersonal(todos,ctx);
+    DATA.panda=p.card; xpTotal+=p.xp; anyLive=true;
+    document.getElementById('c-panda').classList.add('live');
+  }catch(err){ console.warn('งานส่วนตัว: โหลดไม่สำเร็จ',err); }
 
   // ผู้เล่น (รวม XP ทุกหมวด)
   if(anyLive){
@@ -600,6 +670,29 @@ function openPanel(k){
     }else{
       html+=`<div class="quote">วันนี้ไม่มีคาบสอน 🎉</div>`;
     }
+  }
+  // 🐼 งานส่วนตัว (จากชีต)
+  if(d.personal){
+    html+=`<div class="sec-h">📝 งานส่วนตัว</div>`;
+    if(d.personal.length){
+      html+=`<div class="todos">`+d.personal.map(t=>
+        `<div class="todo-it ${t.priority}${t.done?' is-done':''}">
+           <span class="td-dot"></span>
+           <span class="td-tx">${t.done?'<s>':''}${t.text}${t.done?'</s>':''}${t.due?`<small> · ⏰ ${t.due}`:''}${t.due?'</small>':''}</span>
+         </div>`).join('')+`</div>`;
+    }else{
+      html+=`<div class="quote">ยังไม่มีงานส่วนตัว — กด "แก้งานส่วนตัว" เพื่อเพิ่ม</div>`;
+    }
+  }
+  // 🐼 เตือนจากระบบ (auto-digest)
+  if(d.autoItems&&d.autoItems.length){
+    html+=`<div class="sec-h">🔔 เตือนจากระบบ <small>(ดึงอัตโนมัติ)</small></div>`;
+    html+=`<div class="proj">`+d.autoItems.map(a=>
+      `<div class="proj-row">
+         <span class="proj-ic">${a.icon}</span>
+         <span class="proj-n" style="font-weight:600">${a.text}</span>
+         ${a.url?`<a class="proj-go" style="background:#c9b3ff" href="${a.url}" target="_blank" rel="noopener">ทำ ↗</a>`:''}
+       </div>`).join('')+`</div>`;
   }
   // 🐱 รายการโปรเจกต์/เว็บแอป
   if(d.projects&&d.projects.length){
