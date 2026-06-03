@@ -141,6 +141,25 @@
   .subj-n{font-size:13px;font-weight:600;color:#4a4770}
   .subj-v{font-size:13px;color:#2d2a4a;white-space:nowrap}
   .subj-v small{color:#a7a4c0;font-size:11px;font-weight:500}
+  /* รายการโปรเจกต์ */
+  .proj{padding:0 16px 6px}
+  .proj-row{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:12px}
+  .proj-row:nth-child(odd){background:#f7f6fd}
+  .proj-ic{flex:0 0 auto;font-size:20px}
+  .proj-n{flex:1;font-size:13px;font-weight:700;color:#2d2a4a;display:flex;flex-direction:column;line-height:1.3}
+  .proj-n small{font-weight:500;font-size:11px;color:#e0922a}
+  .proj-go{flex:0 0 auto;font-size:11px;font-weight:700;text-decoration:none;color:#fff;
+    background:#ff9eb5;padding:4px 10px;border-radius:8px}
+  .proj-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+  .proj-dot.ok{background:#27d367}.proj-dot.warn{background:#f5a623}
+  /* งานค้าง */
+  .todos{padding:0 24px 6px}
+  .todo-it{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-bottom:1px dashed #eceaf6}
+  .todo-it:last-child{border-bottom:0}
+  .td-dot{width:8px;height:8px;border-radius:50%;margin-top:6px;flex:0 0 auto;background:#9a97b5}
+  .todo-it.high .td-dot{background:#ef4444}.todo-it.medium .td-dot{background:#f5a623}.todo-it.low .td-dot{background:#3b82f6}
+  .td-tx{font-size:12.5px;color:#4a4770;line-height:1.4}
+  .td-tx b{color:#2d2a4a}
   /* ปุ่มลิงก์ */
   .acts{display:flex;gap:10px;padding:14px 24px 4px}
   .act{flex:1;text-align:center;text-decoration:none;font-weight:700;font-size:13.5px;
@@ -262,7 +281,10 @@ const CFG={
   teacherId:'T013',   // ครูบีเค (ณัฐธเนศ อ้นจีน)
   termStart:'2026-05-15',                          // เปิดเทอม 15 พ.ค. 2569
   logUrl:'https://script.google.com/macros/s/AKfycbwR_jmt3cY2cobLlbmn0BgXSaTaKrj4TIVe0z72yr1t6abHZWBNIG1xkTwIoNnnj2rs/exec',
-  scheduleUrl:'https://sites.google.com/view/bklive/'
+  scheduleUrl:'https://sites.google.com/view/bklive/',
+  // 🐱 เว็บ/โปรเจกต์ — ใช้ DASH_API เดิม (apps+todos+sheets, CORS เปิด fetch ได้)
+  dashApi:'https://script.google.com/macros/s/AKfycbxCYo2PchMP09jqu9LkAwUlrvrJuTCy0pvyy6jGrE0ky6qYhdFJ-QVDrv9xqH23MYaJ/exec',
+  todosSheetUrl:'https://docs.google.com/spreadsheets/d/1DlRZ6Q4H6XrGB4bFLz9fTs8wo9ZSQSvhaubdz7P2980/edit'
 };
 const CLASS_MAP={C17:'ม.1/1',C18:'ม.1/2',C19:'ม.2/1',C20:'ม.2/2',C21:'ม.3/1',C22:'ม.3/2'};
 const DOW_TH=['','จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์','อาทิตย์'];
@@ -401,18 +423,76 @@ function computeTeaching(schedule,logs,subjects){
   };
 }
 
+// 🐱 คำนวณการ์ดเว็บ/โปรเจกต์ จาก DASH_API (apps + todos)
+function computeProjects(d){
+  const apps=(d.apps||[]).filter(a=>a.category!=='hub');
+  const total=apps.length;
+  const isOk=s=>(s==='active'||!['pending','checking'].includes(s)); // ค่าแปลกๆ ถือว่า active
+  // กรอง warning ที่เป็นแค่ keyword สถานะ (ข้อมูลคอลัมน์เลื่อนในชีตต้นทาง) ออก
+  const cleanWarn=w=>{w=(w||'').trim();return (['active','pending','checking'].includes(w.toLowerCase())||w.length<4)?'':w;};
+  const active=apps.filter(a=>isOk(a.status)).length;
+  const warnApps=apps.filter(a=>cleanWarn(a.warning));
+  const done=v=>['true','done','yes','1'].includes(String(v).trim().toLowerCase());
+  const openTodos=(d.todos||[]).filter(t=>t.text&&!done(t.done));
+  const pct=total?Math.round(active/total*100):0;
+
+  const projects=apps.map(a=>({
+    icon:a.icon||'🔹',name:a.name,ok:isOk(a.status),
+    url:a.site_url||a.sheet1_url||'',warning:cleanWarn(a.warning)
+  }));
+  const rank={high:0,medium:1,low:2};
+  const todos=openTodos.slice().sort((a,b)=>(rank[a.priority]??3)-(rank[b.priority]??3))
+    .map(t=>({priority:(t.priority||'low'),text:t.text,app:t.app_name||''}));
+
+  const badges=[];
+  badges.push('🗂️ '+total+' โปรเจกต์');
+  if(active===total) badges.push('💚 ทุกระบบใช้งานได้');
+  if(openTodos.length) badges.push('📌 '+openTodos.length+' งานค้าง');
+  if(warnApps.length) badges.push('⚠️ ดูแล '+warnApps.length+' ระบบ');
+
+  return {
+    card:{title:'เว็บ/โปรเจกต์',subtitle:total+' ระบบ · งานค้าง '+openTodos.length,
+      color:'#ff9eb5',
+      bubble:openTodos.length?('มี '+openTodos.length+' งานค้างรออยู่'):'ทุกระบบเรียบร้อยดี!',
+      stats:[['โปรเจกต์ทั้งหมด',String(total)],
+             ['ใช้งานอยู่',active+' / '+total],
+             ['งานค้าง (todo)',openTodos.length+' รายการ'],
+             ['ต้องดูแล',warnApps.length+' ระบบ']],
+      progress:pct,badges,projects,todos,
+      links:[{label:'✏️ แก้งานค้าง',url:CFG.todosSheetUrl}],
+      quote:openTodos.length?'ค่อยๆ เคลียร์ทีละงานนะ เดี๋ยวก็หมด 🐾':'เก่งมาก ดูแลระบบได้เนี้ยบเลย!'},
+    xp:active*15
+  };
+}
+
 async function loadReal(){
+  let xpTotal=0, anyLive=false;
+
+  // 🐮 งานสอน (gviz)
   try{
     const [schedule,logs,subjects]=await Promise.all([gviz(CFG.scheduleId),gviz(CFG.teachingLogId),gviz(CFG.subjectsId)]);
     const t=computeTeaching(schedule,logs,subjects);
-    DATA.cow=t.card;
-    const per=500, lvl=Math.floor(t.xp/per)+1;
-    DATA.player={name:'ครูบีเค',level:lvl,xp:t.xp%per,xpMax:per};
-    render();
+    DATA.cow=t.card; xpTotal+=t.xp; anyLive=true;
     document.getElementById('c-cow').classList.add('live');
-  }catch(err){
-    console.warn('โหลดข้อมูลจริงไม่สำเร็จ ใช้ข้อมูลจำลองแทน:',err);
+  }catch(err){ console.warn('งานสอน: โหลดไม่สำเร็จ',err); }
+
+  // 🐱 เว็บ/โปรเจกต์ (DASH_API)
+  try{
+    const r=await fetch(CFG.dashApi+'?action=getAll');
+    const d=await r.json();
+    if(d&&d.success){
+      const c=computeProjects(d);
+      DATA.cat=c.card; xpTotal+=c.xp; anyLive=true;
+      document.getElementById('c-cat').classList.add('live');
+    }
+  }catch(err){ console.warn('เว็บ/โปรเจกต์: โหลดไม่สำเร็จ',err); }
+
+  // ผู้เล่น (รวม XP ทุกหมวด)
+  if(anyLive){
+    const per=500, lvl=Math.floor(xpTotal/per)+1;
+    DATA.player={name:'ครูบีเค',level:lvl,xp:xpTotal%per,xpMax:per};
   }
+  render();
 }
 
 /* ---- render ---- */
@@ -454,6 +534,25 @@ function openPanel(k){
     }else{
       html+=`<div class="quote">วันนี้ไม่มีคาบสอน 🎉</div>`;
     }
+  }
+  // 🐱 รายการโปรเจกต์/เว็บแอป
+  if(d.projects&&d.projects.length){
+    html+=`<div class="sec-h">🗂️ โปรเจกต์ / เว็บแอป</div>`;
+    html+=`<div class="proj">`+d.projects.map(p=>
+      `<div class="proj-row">
+         <span class="proj-ic">${p.icon}</span>
+         <span class="proj-n">${p.name}${p.warning?`<small>⚠️ ${p.warning}</small>`:''}</span>
+         ${p.url?`<a class="proj-go" href="${p.url}" target="_blank" rel="noopener">เปิด ↗</a>`:`<span class="proj-dot ${p.ok?'ok':'warn'}"></span>`}
+       </div>`).join('')+`</div>`;
+  }
+  // 🐱 งานค้าง (todos)
+  if(d.todos&&d.todos.length){
+    html+=`<div class="sec-h">📌 งานค้าง <small>(${d.todos.length} รายการ)</small></div>`;
+    html+=`<div class="todos">`+d.todos.map(t=>
+      `<div class="todo-it ${t.priority}">
+         <span class="td-dot"></span>
+         <span class="td-tx"><b>${t.app?t.app+': ':''}</b>${t.text}</span>
+       </div>`).join('')+`</div>`;
   }
   // สรุปสอนสะสมรายวิชา
   if(d.bySubject&&d.bySubject.length){
