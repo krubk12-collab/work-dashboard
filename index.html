@@ -31,6 +31,8 @@
   }
   /* ถ้ามีรูป assets/room.png จะใช้รูปแทน gradient */
   .stage.has-bg{background-image:url('assets/room.png');background-size:cover;background-position:center}
+  /* มีรูปห้องจริงแล้ว -> ซ่อนของแต่งห้องที่วาดด้วย CSS */
+  .stage.has-bg .deco{display:none}
   /* ของแต่งห้อง (placeholder) */
   .deco{position:absolute;opacity:.85;filter:drop-shadow(0 6px 8px rgba(0,0,0,.12))}
   .window{left:6%;top:10%;width:22%;height:34%;background:linear-gradient(180deg,#bfe9ff,#8fd0ff);border:10px solid #fff;border-radius:14px;box-shadow:inset 0 0 0 3px #cfa46a,var(--shadow)}
