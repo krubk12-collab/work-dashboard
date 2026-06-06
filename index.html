@@ -1060,5 +1060,19 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel();});
 // deep-link: #cow/#cat/#rabbit/#panda เปิด panel นั้นเลย (โหลดข้อมูลก่อน)
 (function(){const k=location.hash.replace('#','');if(['cow','cat','rabbit','panda'].includes(k))setTimeout(()=>openPanel(k),2600);})();
 </script>
+
+<!-- ปุ่มคุยกับ Claude Code (เปิด bridge ในเครื่อง) -->
+<a id="ccBtn" href="http://localhost:4317" target="_blank" rel="noopener"
+   title="คุยกับ Claude Code (ต้องเปิด bridge ในเครื่องก่อน)"
+   style="position:fixed;right:18px;bottom:18px;z-index:9999;display:flex;align-items:center;gap:8px;
+          background:linear-gradient(135deg,#7c5cff,#5b8cff);color:#fff;text-decoration:none;
+          padding:11px 16px;border-radius:30px;font:600 14px/1 'Sarabun',system-ui,sans-serif;
+          box-shadow:0 6px 20px rgba(91,140,255,.45);transition:transform .15s">
+  <span style="font-size:18px">🤖</span><span>คุยกับ Claude Code</span>
+</a>
+<script>
+  document.getElementById('ccBtn').addEventListener('mouseenter',e=>e.target.closest('a').style.transform='translateY(-2px)');
+  document.getElementById('ccBtn').addEventListener('mouseleave',e=>e.target.closest('a').style.transform='');
+</script>
 </body>
 </html>
