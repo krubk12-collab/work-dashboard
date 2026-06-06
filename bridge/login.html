@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🔒 เข้าสู่ระบบ — Claude Code</title>
+<style>
+  :root{ --bg:#0f1117; --panel:#171a23; --panel2:#1e222e; --line:#2a2f3c;
+         --txt:#e6e8ee; --dim:#8b93a7; --accent:#7c5cff; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Sarabun","Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--txt);
+       min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .card{width:100%;max-width:340px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:28px 24px;text-align:center}
+  .logo{font-size:40px;margin-bottom:6px}
+  h1{font-size:18px;margin:0 0 4px}
+  p.sub{font-size:13px;color:var(--dim);margin:0 0 22px}
+  input{width:100%;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:12px;
+        padding:13px 14px;font:inherit;font-size:15px;outline:none;text-align:center}
+  input:focus{border-color:var(--accent)}
+  button{width:100%;margin-top:12px;background:var(--accent);color:#fff;border:0;border-radius:12px;
+         padding:13px;font-weight:700;font-size:15px;cursor:pointer}
+  button:disabled{opacity:.5;cursor:default}
+  .err{margin-top:14px;color:#ff8aa0;font-size:13px;min-height:18px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">🔒</div>
+  <h1>Claude Code Bridge</h1>
+  <p class="sub">กรอกรหัสผ่านเพื่อเข้าใช้งาน</p>
+  <form id="f">
+    <input id="pw" type="password" placeholder="รหัสผ่าน" autocomplete="current-password" autofocus>
+    <button id="btn" type="submit">เข้าสู่ระบบ</button>
+    <div class="err" id="err"></div>
+  </form>
+</div>
+<script>
+const f = document.getElementById('f'), pw = document.getElementById('pw'),
+      btn = document.getElementById('btn'), err = document.getElementById('err');
+f.addEventListener('submit', async e => {
+  e.preventDefault();
+  err.textContent = '';
+  btn.disabled = true; btn.textContent = 'กำลังตรวจสอบ…';
+  try {
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw.value })
+    });
+    if (r.ok) { location.href = '/'; return; }
+    const d = await r.json().catch(() => ({}));
+    err.textContent = d.error || ('ผิดพลาด (' + r.status + ')');
+  } catch {
+    err.textContent = 'เชื่อมต่อไม่ได้';
+  }
+  btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ';
+  pw.value = ''; pw.focus();
+});
+</script>
+</body>
+</html>

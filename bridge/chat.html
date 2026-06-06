@@ -53,6 +53,7 @@
   <div class="bar">
     <span id="state">พร้อม</span>
     <button onclick="newChat()" style="margin-left:auto">+ แชทใหม่</button>
+    <button onclick="logout()">ออกจากระบบ</button>
   </div>
   <div class="row">
     <textarea id="inp" rows="1" placeholder="พิมพ์คำสั่ง… (Enter ส่ง / Shift+Enter ขึ้นบรรทัด)"></textarea>
@@ -69,7 +70,7 @@ const inp = document.getElementById('inp');
 const sendBtn = document.getElementById('sendBtn');
 
 // เช็คสถานะ bridge
-fetch('/health').then(r=>r.json()).then(h=>{
+fetch('/health').then(r=>{ if(r.status===401){ location.href='/'; throw new Error('unauth'); } return r.json(); }).then(h=>{
   document.getElementById('dot').classList.remove('off');
   document.getElementById('sub').innerHTML = h.workdir.split(/[\\/]/).pop() + ' · ' + h.model;
 }).catch(()=>{
@@ -104,6 +105,11 @@ function newChat(){
   sessionId=null; sessionStorage.removeItem('ccb_sid');
   add('sys','— เริ่มแชทใหม่ (ล้างความจำของ Claude) —');
 }
+async function logout(){
+  try{ await fetch('/api/logout',{method:'POST'}); }catch{}
+  sessionStorage.removeItem('ccb_sid');
+  location.href='/';
+}
 
 async function send(){
   if(busy) return;
@@ -124,6 +130,7 @@ async function send(){
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},
       body: JSON.stringify({message:msg, sessionId})
     });
+    if(res.status===401){ add('err','เซสชันหมดอายุ กำลังพากลับไปหน้าเข้าสู่ระบบ…'); setTimeout(()=>location.href='/',1200); throw new Error(); }
     if(!res.ok){ const e=await res.json().catch(()=>({})); add('err', e.error||('error '+res.status)); throw new Error(); }
 
     const reader = res.body.getReader();
