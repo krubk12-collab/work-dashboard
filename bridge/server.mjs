@@ -151,7 +151,7 @@ function runClaude(res, message, sessionId) {
   const child = spawn(cfg.claudePath, args, {
     cwd: cfg.workdir,
     windowsHide: true,
-    env: process.env
+    env: { ...process.env, CLAUDE_BRIDGE: '1' }   // ให้ SessionStart hook ข้าม notebooklm (รันแค่ตอนใช้ interactive)
   });
 
   child.stdin.write(message, 'utf8');
