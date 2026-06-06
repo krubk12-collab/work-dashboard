@@ -4,5 +4,5 @@ title Claude Code Bridge
 cd /d "%~dp0"
 echo เปิด Claude Code Bridge...
 start "" http://localhost:4317
-node server.mjs
+node --use-system-ca server.mjs
 pause
