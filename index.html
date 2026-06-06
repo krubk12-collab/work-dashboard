@@ -1061,18 +1061,144 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel();});
 (function(){const k=location.hash.replace('#','');if(['cow','cat','rabbit','panda'].includes(k))setTimeout(()=>openPanel(k),2600);})();
 </script>
 
-<!-- ปุ่มคุยกับ Claude Code (เปิด bridge ในเครื่อง) -->
-<a id="ccBtn" href="http://localhost:4317" target="_blank" rel="noopener"
-   title="คุยกับ Claude Code (ต้องเปิด bridge ในเครื่องก่อน)"
-   style="position:fixed;right:18px;bottom:18px;z-index:9999;display:flex;align-items:center;gap:8px;
-          background:linear-gradient(135deg,#7c5cff,#5b8cff);color:#fff;text-decoration:none;
-          padding:11px 16px;border-radius:30px;font:600 14px/1 'Sarabun',system-ui,sans-serif;
-          box-shadow:0 6px 20px rgba(91,140,255,.45);transition:transform .15s">
-  <span style="font-size:18px">🤖</span><span>คุยกับ Claude Code</span>
-</a>
+<!-- ===== 🤖 ช่องแชท Claude Code (ฝังในหน้า อ่านลิงก์ tunnel จาก gas-api อัตโนมัติ) ===== -->
+<style>
+  #ccBtn{position:fixed;right:18px;bottom:18px;z-index:9998;display:flex;align-items:center;gap:8px;
+    background:linear-gradient(135deg,#7c5cff,#5b8cff);color:#fff;border:0;cursor:pointer;
+    padding:11px 16px;border-radius:30px;font:600 14px/1 'Sarabun',system-ui,sans-serif;
+    box-shadow:0 6px 20px rgba(91,140,255,.45);transition:transform .15s}
+  #ccBtn:hover{transform:translateY(-2px)}
+  #ccBtn .ccdot{width:8px;height:8px;border-radius:50%;background:#e0566a}
+  #ccBtn.online .ccdot{background:#3ddc84;box-shadow:0 0 7px #3ddc84}
+  #ccPanel{position:fixed;right:18px;bottom:74px;z-index:9999;width:min(380px,calc(100vw - 24px));
+    height:min(560px,calc(100dvh - 110px));background:#171a23;border:1px solid #2a2f3c;border-radius:16px;
+    box-shadow:0 12px 40px rgba(0,0,0,.5);display:none;flex-direction:column;overflow:hidden;
+    font-family:'Sarabun',system-ui,sans-serif;color:#e6e8ee}
+  #ccPanel.show{display:flex}
+  .cchead{display:flex;align-items:center;gap:9px;padding:12px 14px;background:#1e222e;border-bottom:1px solid #2a2f3c}
+  .cchead .d{width:9px;height:9px;border-radius:50%;background:#e0566a}
+  .cchead.on .d{background:#3ddc84;box-shadow:0 0 7px #3ddc84}
+  .cchead b{font-size:15px}
+  .cchead .sub{font-size:11px;color:#8b93a7;margin-left:auto}
+  .cchead .x{background:none;border:0;color:#8b93a7;font-size:20px;cursor:pointer;padding:0 4px;margin-left:6px}
+  #ccLog{flex:1;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:10px}
+  .ccm{max-width:88%;padding:9px 12px;border-radius:13px;line-height:1.5;white-space:pre-wrap;word-break:break-word;font-size:14px}
+  .ccm.me{align-self:flex-end;background:#2563eb;border-bottom-right-radius:4px}
+  .ccm.ai{align-self:flex-start;background:#1e222e;border:1px solid #2a2f3c;border-bottom-left-radius:4px}
+  .ccm.ai pre{background:#0c0e14;padding:8px;border-radius:7px;overflow-x:auto;font-size:12.5px}
+  .ccm.ai code{background:#0c0e14;padding:1px 4px;border-radius:4px}
+  .cctool{align-self:flex-start;font-size:12px;color:#9db4ff;background:#243046;border:1px solid #2a2f3c;border-radius:9px;padding:4px 9px}
+  .ccsys{align-self:center;font-size:12px;color:#8b93a7;text-align:center}
+  .ccerr{align-self:center;color:#ff8aa0;font-size:12.5px;background:#2a1620;border:1px solid #50212e;padding:7px 11px;border-radius:9px}
+  .ccfoot{padding:9px 11px;background:#1e222e;border-top:1px solid #2a2f3c;display:flex;gap:7px;align-items:flex-end}
+  .ccfoot textarea,.ccfoot input{flex:1;resize:none;background:#171a23;color:#e6e8ee;border:1px solid #2a2f3c;border-radius:11px;padding:10px 12px;font:inherit;font-size:14px;outline:none;max-height:120px}
+  .ccfoot textarea:focus,.ccfoot input:focus{border-color:#7c5cff}
+  .ccfoot button{background:#7c5cff;color:#fff;border:0;border-radius:11px;padding:0 15px;height:40px;font-weight:700;cursor:pointer}
+  .ccfoot button:disabled{opacity:.5}
+  .ccspin{display:inline-block;width:12px;height:12px;border:2px solid #2a2f3c;border-top-color:#7c5cff;border-radius:50%;animation:ccs .7s linear infinite;vertical-align:-2px}
+  @keyframes ccs{to{transform:rotate(360deg)}}
+</style>
+
+<button id="ccBtn" onclick="ccToggle()"><span class="ccdot"></span><span style="font-size:17px">🤖</span><span>Claude Code</span></button>
+<div id="ccPanel">
+  <div class="cchead" id="ccHead">
+    <span class="d"></span><b>🤖 Claude Code</b>
+    <span class="sub" id="ccSub">—</span>
+    <button class="x" onclick="ccToggle()">×</button>
+  </div>
+  <div id="ccLog"></div>
+  <div class="ccfoot" id="ccFoot"></div>
+</div>
 <script>
-  document.getElementById('ccBtn').addEventListener('mouseenter',e=>e.target.closest('a').style.transform='translateY(-2px)');
-  document.getElementById('ccBtn').addEventListener('mouseleave',e=>e.target.closest('a').style.transform='');
+const CCB_REGISTRY='https://script.google.com/macros/s/AKfycbwLOXe-n889nbX47EiQ4RO6ECLz9aohai0uGG1U9eDnuHB4iXDYhVPclZZuxYieAihl5A/exec';
+const cc={url:'',at:'',token:localStorage.getItem('ccb_token')||'',busy:false,sid:null,opened:false};
+const ccLog=()=>document.getElementById('ccLog');
+const ccFoot=()=>document.getElementById('ccFoot');
+
+function ccEsc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function ccMd(s){s=ccEsc(s);s=s.replace(/```([\s\S]*?)```/g,(m,c)=>'<pre>'+c.replace(/^\n/,'')+'</pre>');s=s.replace(/`([^`]+)`/g,'<code>$1</code>');s=s.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');return s;}
+function ccAdd(cls,html){const d=document.createElement('div');d.className=cls;d.innerHTML=html;ccLog().appendChild(d);ccLog().scrollTop=ccLog().scrollHeight;return d;}
+function ccSetOnline(on){document.getElementById('ccBtn').classList.toggle('online',on);document.getElementById('ccHead').classList.toggle('on',on);}
+
+async function ccToggle(){
+  const p=document.getElementById('ccPanel');
+  p.classList.toggle('show');
+  if(p.classList.contains('show')&&!cc.opened){cc.opened=true;await ccRefresh();}
+}
+
+async function ccRefresh(){
+  document.getElementById('ccSub').textContent='กำลังเชื่อมต่อ…';
+  try{
+    const r=await fetch(CCB_REGISTRY+'?action=getBridge&t='+Date.now());
+    const d=await r.json(); cc.url=(d.url||'').trim(); cc.at=d.updatedAt||'';
+  }catch(e){ cc.url=''; }
+  if(!cc.url){
+    ccSetOnline(false);
+    document.getElementById('ccSub').textContent='ออฟไลน์';
+    ccLog().innerHTML=''; ccFoot().innerHTML='';
+    ccAdd('ccsys','🔌 Claude Code ออฟไลน์อยู่\n\nเปิดในเครื่อง: ดับเบิลคลิก <b>start.bat</b> และ <b>tunnel.bat</b>\nแล้วกดปุ่ม 🔄 ลองใหม่');
+    ccFoot().innerHTML='<button onclick="ccRefresh()" style="flex:1">🔄 ลองเชื่อมต่อใหม่</button>';
+    return;
+  }
+  ccSetOnline(true);
+  document.getElementById('ccSub').textContent='ออนไลน์'+(cc.at?(' · '+cc.at):'');
+  cc.token?ccShowChat():ccShowLogin();
+}
+
+function ccShowLogin(){
+  ccLog().innerHTML=''; ccAdd('ccsys','🔒 ใส่รหัสผ่านเพื่อเริ่มคุยกับ Claude Code');
+  ccFoot().innerHTML='<input id="ccPw" type="password" placeholder="รหัสผ่าน" autocomplete="current-password"><button id="ccLoginBtn">เข้า</button>';
+  const pw=document.getElementById('ccPw'),btn=document.getElementById('ccLoginBtn');
+  const go=async()=>{
+    const v=pw.value.trim(); if(!v)return; btn.disabled=true; btn.textContent='…';
+    try{
+      const r=await fetch(cc.url+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:v})});
+      const d=await r.json().catch(()=>({}));
+      if(r.ok&&d.token){cc.token=d.token;localStorage.setItem('ccb_token',d.token);ccShowChat();return;}
+      ccAdd('ccerr',d.error||('ผิดพลาด '+r.status));
+    }catch(e){ ccAdd('ccerr','เชื่อมต่อไม่ได้'); }
+    btn.disabled=false; btn.textContent='เข้า'; pw.value='';
+  };
+  btn.onclick=go; pw.onkeydown=e=>{if(e.key==='Enter')go();}; pw.focus();
+}
+
+function ccShowChat(){
+  ccLog().innerHTML=''; ccAdd('ccsys','คุย/สั่งงาน Claude Code ได้เลย เช่น "แก้เว็บ X" หรือ "clasp push"');
+  ccFoot().innerHTML='<textarea id="ccInp" rows="1" placeholder="พิมพ์คำสั่ง… (Enter ส่ง)"></textarea><button id="ccSendBtn">ส่ง</button>';
+  const inp=document.getElementById('ccInp'),btn=document.getElementById('ccSendBtn');
+  inp.addEventListener('input',()=>{inp.style.height='auto';inp.style.height=Math.min(inp.scrollHeight,120)+'px';});
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();ccSend();}});
+  btn.onclick=ccSend; inp.focus();
+}
+
+async function ccSend(){
+  if(cc.busy)return;
+  const inp=document.getElementById('ccInp'),btn=document.getElementById('ccSendBtn');
+  const msg=inp.value.trim(); if(!msg)return;
+  inp.value='';inp.style.height='auto';
+  ccAdd('ccm me',ccEsc(msg));
+  cc.busy=true;btn.disabled=true;
+  let aiBox=null,acc='';
+  const ensure=()=>{if(!aiBox)aiBox=ccAdd('ccm ai','');return aiBox;};
+  try{
+    const res=await fetch(cc.url+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+cc.token},body:JSON.stringify({message:msg,sessionId:cc.sid})});
+    if(res.status===401){cc.token='';localStorage.removeItem('ccb_token');ccAdd('ccerr','ต้องเข้าสู่ระบบใหม่');ccShowLogin();throw new Error();}
+    if(!res.ok){ccAdd('ccerr','error '+res.status);throw new Error();}
+    const rd=res.body.getReader(),dec=new TextDecoder();let buf='';
+    while(true){const{value,done}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});let i;
+      while((i=buf.indexOf('\n\n'))>=0){const chunk=buf.slice(0,i);buf=buf.slice(i+2);
+        let ev='message',data='';for(const ln of chunk.split('\n')){if(ln.startsWith('event:'))ev=ln.slice(6).trim();else if(ln.startsWith('data:'))data+=ln.slice(5).trim();}
+        if(!data)continue;let d;try{d=JSON.parse(data);}catch{continue;}
+        if(ev==='session'&&d.sessionId)cc.sid=d.sessionId;
+        else if(ev==='text'){acc+=d.text;ensure().innerHTML=ccMd(acc);ccLog().scrollTop=ccLog().scrollHeight;}
+        else if(ev==='tool'){ccAdd('cctool','🔧 '+ccEsc(d.name));aiBox=null;acc='';}
+        else if(ev==='result'){if(d.isError)ccAdd('ccerr',ccEsc(d.text||''));else if(d.text&&!acc)ensure().innerHTML=ccMd(d.text);}
+        else if(ev==='error')ccAdd('ccerr',ccEsc(d.message||'error'));
+      }
+    }
+  }catch(e){if(e.message)ccAdd('ccerr','ขัดข้อง: '+ccEsc(e.message));}
+  cc.busy=false;if(btn)btn.disabled=false;const i2=document.getElementById('ccInp');if(i2)i2.focus();
+}
 </script>
 </body>
 </html>

@@ -11,7 +11,8 @@ echo   * เปิด URL นั้นบนมือถือ แล้วใ�
 echo   * เลิกใช้ = ปิดหน้าต่างนี้ทันที (tunnel จะดับ)
 echo.
 echo ------------------------------------------------------------
-"C:\Program Files (x86)\cloudflared\cloudflared.exe" tunnel --url http://localhost:4317 --no-autoupdate
+cd /d "%~dp0"
+node --use-system-ca tunnel.mjs
 echo.
 echo (tunnel ปิดแล้ว)
 pause

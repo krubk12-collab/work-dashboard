@@ -233,6 +233,13 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://localhost:${cfg.port}`);
   const ip = clientIp(req);
 
+  // CORS: ให้หน้า dashboard (GitHub Pages) เรียกข้ามโดเมนได้ (ใช้ Bearer token ไม่ใช้ cookie)
+  const origin = req.headers['origin'];
+  if (origin) { res.setHeader('Access-Control-Allow-Origin', origin); res.setHeader('Vary', 'Origin'); }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
+
   // หน้าแรก: ยังไม่ login → หน้ากรอกรหัส, login แล้ว → หน้าแชท (ฝัง token)
   if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
     return hasSession(req) ? serveFile(res, 'chat.html', true) : serveFile(res, 'login.html', false);
@@ -262,7 +269,8 @@ const server = http.createServer((req, res) => {
         'Content-Type': 'application/json',
         'Set-Cookie': `ccb_session=${sid}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${Math.floor(SESSION_MS / 1000)}`
       });
-      res.end(JSON.stringify({ ok: true }));
+      // คืน token ด้วย เพื่อให้ dashboard (ข้ามโดเมน ไม่มี cookie) ใช้ Bearer ต่อได้
+      res.end(JSON.stringify({ ok: true, token: cfg.token }));
     });
   }
 
@@ -279,17 +287,14 @@ const server = http.createServer((req, res) => {
 
   // health: ต้อง login แล้ว
   if (req.method === 'GET' && url.pathname === '/health') {
-    if (!hasSession(req)) { res.writeHead(401); return res.end('{"error":"unauthorized"}'); }
+    const authH = req.headers['authorization'] || '';
+    if (!hasSession(req) && authH !== `Bearer ${cfg.token}`) { res.writeHead(401); return res.end('{"error":"unauthorized"}'); }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ ok: true, workdir: cfg.workdir, model: cfg.model }));
   }
 
-  // แชท: ต้องมี session cookie + token
+  // แชท: ต้องมี Bearer token (ได้จากการ login ด้วยรหัสผ่าน) — ใช้ได้ทั้ง local และ dashboard ข้ามโดเมน
   if (req.method === 'POST' && url.pathname === '/api/chat') {
-    if (!hasSession(req)) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ error: 'ยังไม่ได้เข้าสู่ระบบ' }));
-    }
     const auth = req.headers['authorization'] || '';
     if (auth !== `Bearer ${cfg.token}`) {
       res.writeHead(401, { 'Content-Type': 'application/json' });
