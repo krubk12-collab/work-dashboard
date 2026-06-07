@@ -323,7 +323,7 @@
   <!-- บอร์ดกระดาษบนผนัง โชว์ปฏิทินสัปดาห์นี้ (สด) -->
   <div class="board" id="board" onclick="openPanel('panda')" title="ดูปฏิทินทั้งหมด">
     <div class="board-pin"></div>
-    <div class="board-head">📅 สัปดาห์นี้ <span class="board-src" id="boardSrc"></span></div>
+    <div class="board-head"><span id="boardTitle">📅 สัปดาห์นี้</span> <span class="board-src" id="boardSrc"></span></div>
     <div class="board-body" id="boardBody"><div class="bd-empty">กำลังโหลด…</div></div>
   </div>
 
@@ -365,7 +365,7 @@
 <!-- แถบมือถือ: การ์ดปฏิทินสัปดาห์นี้ + เมนู 4 หมวด -->
 <div class="mwrap">
   <div class="mcal" onclick="openPanel('panda')">
-    <div class="mcal-h">📅 ปฏิทินสัปดาห์นี้ <span class="board-src" id="mCalSrc"></span></div>
+    <div class="mcal-h"><span id="mCalTitle">📅 ปฏิทินสัปดาห์นี้</span> <span class="board-src" id="mCalSrc"></span></div>
     <div id="mCalBody"><div class="bd-empty">กำลังโหลด…</div></div>
   </div>
   <div class="mnav">
@@ -724,15 +724,21 @@ function renderBoard(cal){
   const wk=(cal&&cal.week)||[];
   const srcTxt=CAL_SOURCE==='live'?'🟢 สด':(CAL_SOURCE==='sheet'?'📄 sync':'');
   ['boardSrc','mCalSrc'].forEach(id=>{const s=document.getElementById(id);if(s)s.textContent=srcTxt;});
+  // สัปดาห์นี้มีนัด → โชว์สัปดาห์นี้; ถ้าว่าง → โชว์นัดที่ใกล้สุดถัดไป (เดือนนี้ + ถัดไป) 3–5 อันดับแรก
+  const upcoming=!wk.length;
+  const list=upcoming?[...((cal&&cal.month)||[]),...((cal&&cal.later)||[])]:wk;
+  {const t=document.getElementById('boardTitle');if(t)t.textContent=upcoming?'📅 นัดถัดไป':'📅 สัปดาห์นี้';}
+  {const t=document.getElementById('mCalTitle');if(t)t.textContent=upcoming?'📅 นัดที่ใกล้ถึง':'📅 ปฏิทินสัปดาห์นี้';}
   let inner;
-  if(!wk.length){ inner='<div class="bd-empty">ไม่มีนัดสัปดาห์นี้ 🎉</div>'; }
-  else inner=wk.slice(0,5).map(e=>{
+  if(!list.length){ inner='<div class="bd-empty">ไม่มีนัดที่จะถึง 🎉</div>'; }
+  else inner=list.slice(0,5).map(e=>{
     const d=new Date(e.date+'T00:00:00');
     const isToday=e.date===today;
+    const sub=upcoming?TH_MON[d.getMonth()]:TH_DOW[d.getDay()];   // ข้ามเดือน → โชว์เดือน, สัปดาห์นี้ → โชว์วัน
     return `<div class="bd-row${isToday?' today':''}${e.kind==='holiday'?' hol':''}">
-      <span class="bd-d"><b>${d.getDate()}</b><small>${TH_DOW[d.getDay()]}</small></span>
+      <span class="bd-d"><b>${d.getDate()}</b><small>${sub}</small></span>
       <span class="bd-t">${e.title}${e.time?` <i>${e.time}</i>`:''}</span></div>`;
-  }).join('')+(wk.length>5?`<div class="bd-more">+${wk.length-5} เพิ่มเติม…</div>`:'');
+  }).join('')+(list.length>5?`<div class="bd-more">+${list.length-5} เพิ่มเติม…</div>`:'');
   ['boardBody','mCalBody'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=inner;});
 }
 
