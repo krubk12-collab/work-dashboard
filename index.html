@@ -1132,6 +1132,13 @@ async function ccRefresh(){
     const r=await fetch(CCB_REGISTRY+'?action=getBridge&t='+Date.now());
     const d=await r.json(); cc.url=(d.url||'').trim(); cc.at=d.updatedAt||'';
   }catch(e){ cc.url=''; }
+  // เช็กว่าลิงก์ tunnel ยังมีชีวิตจริง (กันลิงก์เก่าค้างใน gas-api → ERR_NAME_NOT_RESOLVED)
+  if(cc.url){
+    try{
+      const c=new AbortController(); const to=setTimeout(()=>c.abort(),10000);
+      await fetch(cc.url+'/health',{signal:c.signal}); clearTimeout(to);  // 200/401 = ยังอยู่, throw = ตาย
+    }catch(e){ cc.url=''; }
+  }
   if(!cc.url){
     ccSetOnline(false);
     document.getElementById('ccSub').textContent='ออฟไลน์';
