@@ -1,8 +1,13 @@
 @echo off
-chcp 65001 >nul
 title Claude Code Bridge
 cd /d "%~dp0"
-echo เปิด Claude Code Bridge...
+echo ============================================================
+echo   Claude Code Bridge - http://localhost:4317
+echo   Keep this window OPEN while using Claude Code.
+echo ============================================================
+echo.
 start "" http://localhost:4317
-node --use-system-ca server.mjs
-pause
+node --use-system-ca "%~dp0server.mjs"
+echo.
+echo (Bridge stopped)
+pause >nul
