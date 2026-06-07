@@ -207,6 +207,20 @@
   .cal-main b{font-size:13px;color:#2d2a4a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .cal-main small{font-size:11px;color:#8b88a8}
   .cal-go{flex:0 0 auto;color:#a89cff;font-weight:700}
+  /* ปฏิทินเดือน (กริด 7 วัน) */
+  .mgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;padding:4px 18px 12px}
+  .mg-h{text-align:center;font-size:10px;font-weight:700;color:#9a97b5;padding:2px 0}
+  .mg-c{position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+    border-radius:9px;background:#f5f4fb;font-size:12.5px;font-weight:600;color:#6a6790}
+  .mg-c.blank{background:transparent}
+  .mg-c.has{background:#e9e3fb;color:#5a4ad0;font-weight:700}
+  .mg-c.hol{background:#ffe6e6;color:#e23b3b}
+  .mg-c.today{outline:2px solid var(--gold-d);background:#fff4d8;color:#e0922a}
+  .mg-dot{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:#7a5af0}
+  .mg-c.hol .mg-dot{background:#e23b3b}
+  .mg-c.today .mg-dot{background:var(--gold-d)}
+  .mg-cap{padding:2px 24px 10px;font-size:11px;color:#9a97b5}
+  .mg-cap b{color:#7a5af0}
   /* ปุ่มลิงก์ */
   .acts{display:flex;gap:10px;padding:14px 24px 4px}
   .act:nth-child(3){background:linear-gradient(135deg,#a0e7a0,#5cc97a);box-shadow:0 6px 14px rgba(92,201,122,.35)}
@@ -676,7 +690,35 @@ async function loadCalendar(){
 
 // บอร์ดกระดาษบนผนัง — โชว์ปฏิทินสัปดาห์นี้ (สด)
 const TH_MON=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const TH_MON_FULL=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 const TH_DOW=['อา','จ','อ','พ','พฤ','ศ','ส'];
+
+// สร้างกริดปฏิทินเดือนปัจจุบัน (7 วัน x สัปดาห์) จาก event ทั้งเดือน
+function buildMonthCalendar(events){
+  const now=new Date(), y=now.getFullYear(), m=now.getMonth(), todayStr=fmtDate(now);
+  const mk=todayStr.slice(0,7);
+  const map={};                                     // 'YYYY-MM-DD' -> {events:[], holiday}
+  (events||[]).forEach(ev=>{
+    const ds=asDateStr(ev.date); if(!ds||ds.slice(0,7)!==mk) return;
+    if(!map[ds]) map[ds]={events:[],holiday:false};
+    map[ds].events.push({title:ev.title||'',
+      time:String(ev.all_day).toUpperCase()==='TRUE'?'':asTimeStr(ev.time),
+      link:ev.link||'',kind:ev.kind||'work'});
+    if((ev.kind||'')==='holiday') map[ds].holiday=true;
+  });
+  const startDow=new Date(y,m,1).getDay();          // 0=อา
+  const daysInMonth=new Date(y,m+1,0).getDate();
+  const cells=[];
+  for(let i=0;i<startDow;i++) cells.push({blank:true});
+  let eventDays=0;
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=fmtDate(new Date(y,m,d));
+    const info=map[ds]||{events:[],holiday:false};
+    if(info.events.length) eventDays++;
+    cells.push({day:d,date:ds,events:info.events,holiday:info.holiday,today:ds===todayStr});
+  }
+  return {title:TH_MON_FULL[m]+' '+(y+543),cells,eventDays};
+}
 function renderBoard(cal){
   const today=fmtDate(new Date());
   const wk=(cal&&cal.week)||[];
@@ -738,6 +780,7 @@ function computePersonal(todos,ctx,calEvents){
 
   // ปฏิทิน: จัดกลุ่ม + เอา event "วันนี้" (ที่เป็นงาน) ใส่ auto-digest
   const cal=groupCalendar(calEvents);
+  const monthCal=buildMonthCalendar(calEvents);     // กริดปฏิทินทั้งเดือน
   cal.week.filter(e=>e.date===today&&e.kind!=='holiday').forEach(e=>
     auto.push({icon:'📅',text:'วันนี้: '+e.title+(e.time?' ('+e.time+' น.)':''),url:e.link}));
 
@@ -763,7 +806,7 @@ function computePersonal(todos,ctx,calEvents){
              ['เสร็จแล้ว',doneCnt+' รายการ'],
              ['เตือนจากระบบ',auto.length+' รายการ'],
              ['รวมต้องทำวันนี้',totalToday+' รายการ']],
-      progress:pct,badges,personal,autoItems:auto,calendar:cal,
+      progress:pct,badges,personal,autoItems:auto,calendar:cal,monthCal,
       links:[{label:'✏️ แก้งานส่วนตัว',url:CFG.personalUrl},{label:'📅 เปิดปฏิทิน',url:CFG.calendarUrl}],
       quote:totalToday?'ค่อยๆ ทำทีละอย่างนะ พักได้ก็พัก เดี๋ยวก็เสร็จเอง 🐼':'เยี่ยมมาก! เคลียร์งานวันนี้หมดแล้ว พักผ่อนเลย 🎍'},
     xp:doneCnt*5
@@ -937,6 +980,20 @@ function openPanel(k){
     }else{
       html+=`<div class="quote">ยังไม่มีงานส่วนตัว — กด "แก้งานส่วนตัว" เพื่อเพิ่ม</div>`;
     }
+  }
+  // 📅 ปฏิทินเดือนนี้ (กริด 7 วัน) — วันมีนัดจะมีจุด, วันหยุดสีแดง, วันนี้ไฮไลต์
+  if(d.monthCal){
+    const mc=d.monthCal;
+    html+=`<div class="sec-h">📅 ปฏิทินเดือน ${mc.title} <small>(${mc.eventDays} วันมีนัด)</small></div>`;
+    html+=`<div class="mgrid">`+TH_DOW.map(h=>`<div class="mg-h">${h}</div>`).join('');
+    html+=mc.cells.map(c=>{
+      if(c.blank) return `<div class="mg-c blank"></div>`;
+      const has=c.events.length>0, cls=['mg-c'];
+      if(c.today)cls.push('today'); if(c.holiday)cls.push('hol'); if(has)cls.push('has');
+      const tip=has?c.events.map(e=>e.title+(e.time?' '+e.time+' น.':'')).join('\n').replace(/"/g,'&quot;'):'';
+      return `<div class="${cls.join(' ')}"${tip?` title="${tip}"`:''}><span>${c.day}</span>${has?`<span class="mg-dot"></span>`:''}</div>`;
+    }).join('')+`</div>`;
+    html+=`<div class="mg-cap">🟣 วันมีนัด · 🔴 วันหยุด · <b>แตะวันที่เพื่อดูชื่อกิจกรรม</b></div>`;
   }
   // 📅 ปฏิทินงาน (สัปดาห์นี้ / เดือนนี้ / ถัดไป)
   if(d.calendar){
