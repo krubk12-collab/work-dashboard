@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Usage · Mr.Notehoo</title>
+<style>
+  :root{
+    --page:#0d0d0d; --surface:#1a1a19; --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+    --s1:#3987e5; --s1l:#6da7ec; --s2:#199e70; --s3:#c98500; --s4:#008300;
+    --good:#0ca30c; --warning:#fab219; --critical:#d03b3b;
+  }
+  *{ box-sizing:border-box; margin:0; }
+  body{ background:var(--page); color:var(--ink); font-family:system-ui,-apple-system,'Segoe UI',sans-serif; padding:16px; }
+  h1{ font-size:19px; font-weight:700; display:flex; align-items:center; gap:8px; }
+  .sub{ color:var(--muted); font-size:12px; margin-top:2px; }
+  .wrap{ max-width:1060px; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:13px 15px; }
+  h3{ font-size:13.5px; font-weight:600; color:var(--ink2); margin-bottom:9px; }
+  .meters{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .meter .big{ font-size:34px; font-weight:700; }
+  .meter .l{ color:var(--ink2); font-size:12.5px; }
+  .meter .d{ color:var(--muted); font-size:11.5px; margin-top:4px; }
+  .track{ height:10px; background:var(--grid); border-radius:99px; overflow:hidden; margin-top:8px; }
+  .fill{ height:100%; border-radius:99px; }
+  .tiles{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+  .tile .l{ color:var(--ink2); font-size:12px; }
+  .tile .v{ font-size:22px; font-weight:700; margin-top:2px; }
+  .tile .d{ color:var(--muted); font-size:11px; margin-top:2px; }
+  .chartwrap{ overflow-x:auto; }
+  svg text{ font-family:inherit; }
+  .mrow{ display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px dashed var(--grid); font-size:13px; }
+  .mrow:last-child{ border-bottom:none; }
+  .chip{ width:10px; height:10px; border-radius:3px; flex:none; }
+  .mrow .nm{ color:var(--ink2); }
+  .mrow .val{ margin-left:auto; font-variant-numeric:tabular-nums; font-weight:600; }
+  .scroll{ overflow-x:auto; }
+  table{ border-collapse:collapse; width:100%; font-size:12.5px; min-width:430px; }
+  th{ text-align:left; color:var(--muted); font-weight:600; padding:5px 7px; border-bottom:1px solid var(--axis); white-space:nowrap; }
+  td{ padding:5px 7px; border-bottom:1px solid var(--grid); font-variant-numeric:tabular-nums; color:var(--ink2); white-space:nowrap; }
+  tr.act td{ color:var(--ink); font-weight:600; }
+  .note{ color:var(--muted); font-size:11.5px; line-height:1.5; }
+  a.back{ color:var(--s1l); text-decoration:none; font-size:13px; }
+  #tip{ position:fixed; display:none; background:#000; border:1px solid var(--border); border-radius:8px;
+        padding:6px 10px; font-size:12px; pointer-events:none; z-index:9; color:var(--ink); }
+  #tip .t2{ color:var(--ink2); }
+  @media(max-width:560px){ .meters{ grid-template-columns:1fr; } .meter .big{ font-size:30px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1>📊 Claude Usage <a class="back" href="index.html" style="margin-left:auto">⬅ กลับห้องทำงาน</a></h1>
+    <div class="sub" id="meta">กำลังโหลดข้อมูลจากคลาวด์…</div>
+  </div>
+
+  <div class="card">
+    <h3>มิเตอร์ลิมิต (ประมาณการจากจุดสอบเทียบ /usage)</h3>
+    <div class="meters" id="meters"><div class="note">กำลังโหลด…</div></div>
+  </div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="card">
+    <h3>ค่าใช้จ่ายรายวัน · 30 วันล่าสุด (USD เทียบเท่า · เฉพาะ Claude)</h3>
+    <div class="chartwrap" id="chart"></div>
+  </div>
+
+  <div class="card"><h3>แยกตามโมเดล · เดือนนี้</h3><div id="models"></div></div>
+
+  <div class="card">
+    <h3>Block 5 ชั่วโมงล่าสุด (เวลาไทย)</h3>
+    <div class="scroll"><table><thead><tr><th>เริ่ม</th><th>สถานะ</th><th style="text-align:right">Token</th><th style="text-align:right">ค่าใช้จ่าย</th><th style="text-align:right">$/ชม.</th></tr></thead>
+    <tbody id="blocks"></tbody></table></div>
+  </div>
+
+  <div class="note">อัปเดตจากเครื่องครูทุก 5 นาที (ต้องเปิด "เปิดแดชบอร์ด.bat" ทิ้งไว้ที่คอม) · มูลค่าเทียบเท่า API ไม่ใช่เงินจ่ายจริง · % เป็นประมาณการ — ตัวเลขจริงดู /usage ใน Claude Code</div>
+</div>
+<div id="tip"></div>
+
+<script>
+var RAW='https://gist.githubusercontent.com/krubk12-collab/b912a8d133a8b50f79a7822d81ef2347/raw/usage.json';
+function money(x){ return '$'+(x||0).toLocaleString('en-US',{maximumFractionDigits:2}); }
+function tokfmt(x){ return x>=1e6?(x/1e6).toFixed(1)+'M':x>=1e3?(x/1e3).toFixed(0)+'k':String(x); }
+function thTime(iso){ var d=new Date(iso); return d.toLocaleString('th-TH',{timeZone:'Asia/Bangkok',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function ago(iso){ var m=Math.round((Date.now()-new Date(iso).getTime())/60000); return m<1?'เมื่อครู่':m<60?m+' นาทีที่แล้ว':Math.round(m/60)+' ชม.ที่แล้ว'; }
+function pctCol(p){ return p>=90?'var(--critical)':p>=70?'var(--warning)':'var(--good)'; }
+
+function render(U){
+  document.getElementById('meta').textContent='ข้อมูลจากเครื่องครู อัปเดต '+ago(U.generatedAt)+' ('+thTime(U.generatedAt)+' น.)';
+
+  // ---- มิเตอร์ ----
+  var E=U.est||{}, mhtml='';
+  function meter(label,pct,detail){
+    if(pct==null) return '<div class="meter"><div class="l">'+label+'</div><div class="big" style="color:var(--muted)">—</div><div class="d">ยังไม่สอบเทียบ</div></div>';
+    return '<div class="meter"><div class="l">'+label+'</div><div class="big" style="color:'+pctCol(pct)+'">~'+pct+'%</div>'+
+      '<div class="track"><div class="fill" style="width:'+pct+'%;background:'+pctCol(pct)+'"></div></div><div class="d">'+detail+'</div></div>';
+  }
+  var ab=U.activeBlock, abTxt='';
+  if(ab){ var t1=new Date(ab.end).getTime(); abTxt='รอบปัจจุบัน '+money(ab.cost)+' · รีเซ็ตในอีก ~'+Math.max(0,Math.round((t1-Date.now())/60000))+' นาที'; }
+  else abTxt='ไม่มีรอบที่กำลังใช้งาน';
+  mhtml+=meter('Session (รอบ 5 ชั่วโมง)', ab?E.sessionPct:0, abTxt);
+  mhtml+=meter('รายสัปดาห์ (รีเซ็ตอาทิตย์ ~06:00)', E.weekPct, 'สัปดาห์นี้ '+money(U.week.cost)+' จากประมาณเพดาน '+(E.weekFullUSD?money(E.weekFullUSD):'—'));
+  document.getElementById('meters').innerHTML=mhtml;
+
+  // ---- tiles ----
+  function tile(l,v,d){ return '<div class="card tile"><div class="l">'+l+'</div><div class="v">'+v+'</div><div class="d">'+d+'</div></div>'; }
+  document.getElementById('tiles').innerHTML=
+    tile('วันนี้',money(U.today.cost),tokfmt(U.today.tokens)+' tokens')+
+    tile('สัปดาห์นี้',money(U.week.cost),'ตั้งแต่ '+U.week.start)+
+    tile('เดือนนี้',money(U.month.cost),'ตั้งแต่ '+U.month.start)+
+    tile('อัตราตอนนี้',(ab&&ab.costPerHour)?money(ab.costPerHour)+'/ชม.':'—',ab?('block เริ่ม '+thTime(ab.start)+' น.'):'');
+
+  // ---- chart ----
+  (function(){
+    var D=U.days30||[]; if(!D.length){ document.getElementById('chart').innerHTML='<div class="note">ยังไม่มีข้อมูล</div>'; return; }
+    var W=640,H=210,P={l:40,r:8,t:16,b:30}, iw=W-P.l-P.r, ih=H-P.t-P.b;
+    var max=Math.max.apply(null,D.map(function(d){return d.cost;}))*1.12;
+    var bw=Math.max(4,Math.min(20,iw/D.length-2));
+    var maxI=D.reduce(function(m,d,i){return d.cost>D[m].cost?i:m;},0);
+    var s='<svg viewBox="0 0 '+W+' '+H+'" style="min-width:520px;width:100%">';
+    for(var g=0;g<=3;g++){ var gy=P.t+ih-ih*g/3;
+      s+='<line x1="'+P.l+'" y1="'+gy+'" x2="'+(W-P.r)+'" y2="'+gy+'" stroke="var(--grid)"/>';
+      s+='<text x="'+(P.l-5)+'" y="'+(gy+4)+'" fill="var(--muted)" font-size="10" text-anchor="end">$'+Math.round(max*g/3)+'</text>'; }
+    D.forEach(function(d,i){
+      var x=P.l+(iw/D.length)*i+((iw/D.length)-bw)/2, h=Math.max(1,d.cost/max*ih), y=P.t+ih-h;
+      var isT=d.date===U.today.date;
+      s+='<rect class="bar" data-i="'+i+'" x="'+x+'" y="'+y+'" width="'+bw+'" height="'+h+'" rx="3" fill="'+(isT?'var(--s1l)':'var(--s1)')+'"/>';
+      if(i===maxI||isT) s+='<text x="'+(x+bw/2)+'" y="'+(y-5)+'" fill="var(--ink2)" font-size="10" text-anchor="middle">$'+d.cost.toFixed(0)+'</text>';
+      if(i%5===0||i===D.length-1) s+='<text x="'+(x+bw/2)+'" y="'+(H-8)+'" fill="var(--muted)" font-size="9.5" text-anchor="middle">'+d.date.slice(5).replace('-','/')+'</text>';
+    });
+    s+='<line x1="'+P.l+'" y1="'+(P.t+ih)+'" x2="'+(W-P.r)+'" y2="'+(P.t+ih)+'" stroke="var(--axis)"/></svg>';
+    var box=document.getElementById('chart'); box.innerHTML=s;
+    var tip=document.getElementById('tip');
+    box.addEventListener('mousemove',function(e){ var t=e.target.closest('.bar'); if(!t){tip.style.display='none';return;}
+      var d=D[+t.dataset.i]; tip.innerHTML='<b>'+d.date+'</b><br><span class="t2">'+money(d.cost)+' · '+tokfmt(d.tokens)+' tokens</span>';
+      tip.style.display='block'; tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY-10)+'px'; });
+    box.addEventListener('mouseleave',function(){ tip.style.display='none'; });
+  })();
+
+  // ---- models ----
+  var COL={'fable-5':'var(--s1)','opus-4-8':'var(--s2)','sonnet-5':'var(--s3)','sonnet-4-6':'var(--s3)','haiku-4-5':'var(--s4)'};
+  var ks=Object.keys(U.modelMonth||{}).sort(function(a,b){return U.modelMonth[b]-U.modelMonth[a];});
+  var tot=ks.reduce(function(s,k){return s+U.modelMonth[k];},0)||1;
+  document.getElementById('models').innerHTML=ks.map(function(k){
+    return '<div class="mrow"><span class="chip" style="background:'+(COL[k]||'var(--muted)')+'"></span><span class="nm">'+esc(k)+'</span>'+
+      '<span class="val">'+money(U.modelMonth[k])+' <span style="color:var(--muted);font-weight:400">('+Math.round(U.modelMonth[k]/tot*100)+'%)</span></span></div>';
+  }).join('')||'<div class="note">ยังไม่มีข้อมูล</div>';
+
+  // ---- blocks ----
+  document.getElementById('blocks').innerHTML=(U.recentBlocks||[]).map(function(b){
+    return '<tr'+(b.active?' class="act"':'')+'><td>'+thTime(b.start)+'</td><td>'+(b.active?'⚡ กำลังใช้':'จบแล้ว')+'</td>'+
+      '<td style="text-align:right">'+tokfmt(b.tokens)+'</td><td style="text-align:right">'+money(b.cost)+'</td>'+
+      '<td style="text-align:right">'+(b.costPerHour?money(b.costPerHour):'—')+'</td></tr>'; }).join('');
+}
+
+function load(){
+  fetch(RAW+'?t='+Date.now()).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(render)
+    .catch(function(e){ document.getElementById('meta').textContent='โหลดข้อมูลไม่ได้ ('+e.message+') — เช็คว่าคอมครูเปิด updater อยู่ไหม'; });
+}
+load(); setInterval(load, 5*60*1000);
+</script>
+</body>
+</html>
