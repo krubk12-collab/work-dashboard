@@ -1272,5 +1272,107 @@ async function ccSend(){
   cc.busy=false;if(btn)btn.disabled=false;const i2=document.getElementById('ccInp');if(i2)i2.focus();
 }
 </script>
+
+<!-- ===== 📒 Automation Ledger (agentic OS: ประวัติการรัน skill/automation จริง) ===== -->
+<style>
+  #ledBtn{position:fixed;left:18px;bottom:18px;z-index:9998;display:flex;align-items:center;gap:8px;
+    background:linear-gradient(135deg,#2a9d6f,#1f7a56);color:#fff;border:0;cursor:pointer;
+    padding:11px 16px;border-radius:30px;font:600 14px/1 'Sarabun',system-ui,sans-serif;
+    box-shadow:0 6px 20px rgba(31,122,86,.45);transition:transform .15s}
+  #ledBtn:hover{transform:translateY(-2px)}
+  #ledBtn .leddot{width:8px;height:8px;border-radius:50%;background:#8b93a7}
+  #ledBtn.err .leddot{background:#e0566a}
+  #ledBtn.ok .leddot{background:#3ddc84;box-shadow:0 0 7px #3ddc84}
+  #ledPanel{position:fixed;left:18px;bottom:74px;z-index:9999;width:min(400px,calc(100vw - 24px));
+    height:min(560px,calc(100dvh - 110px));background:#171a23;border:1px solid #2a2f3c;border-radius:16px;
+    box-shadow:0 12px 40px rgba(0,0,0,.5);display:none;flex-direction:column;overflow:hidden;
+    font-family:'Sarabun',system-ui,sans-serif;color:#e6e8ee}
+  #ledPanel.show{display:flex}
+  .ledhead{display:flex;align-items:center;gap:9px;padding:12px 14px;background:#1e222e;border-bottom:1px solid #2a2f3c}
+  .ledhead b{font-size:15px}
+  .ledhead .sub{font-size:11px;color:#8b93a7;margin-left:auto}
+  .ledhead .x{background:none;border:0;color:#8b93a7;font-size:20px;cursor:pointer;padding:0 4px;margin-left:6px}
+  #ledSummary{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px}
+  .led-card{background:#1e222e;border:1px solid #2a2f3c;border-radius:10px;padding:9px 10px;cursor:pointer}
+  .led-card:hover{border-color:#3a4256}
+  .led-card .nm{font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:5px}
+  .led-card .nm .dot{width:7px;height:7px;border-radius:50%;background:#8b93a7;flex:none}
+  .led-card.ok .nm .dot{background:#3ddc84;box-shadow:0 0 6px #3ddc84}
+  .led-card.fail .nm .dot{background:#e0566a}
+  .led-card .tm{font-size:11px;color:#8b93a7;margin-top:3px}
+  #ledLog{flex:1;overflow-y:auto;padding:0 12px 12px;display:flex;flex-direction:column;gap:6px;border-top:1px solid #2a2f3c;padding-top:10px}
+  .led-row{font-size:12px;padding:7px 9px;border-radius:8px;background:#1e222e;border:1px solid #2a2f3c;cursor:pointer}
+  .led-row:hover{border-color:#3a4256}
+  .led-row .tt{display:flex;justify-content:space-between;gap:8px;color:#e6e8ee}
+  .led-row .ss{color:#8b93a7;font-size:11px;margin-top:2px}
+  .led-empty{align-self:center;color:#8b93a7;font-size:12.5px;margin:auto}
+</style>
+
+<button id="ledBtn" onclick="ledToggle()"><span class="leddot"></span><span style="font-size:17px">📒</span><span>Ledger</span></button>
+<div id="ledPanel">
+  <div class="ledhead">
+    <b>📒 Automation Ledger</b>
+    <span class="sub" id="ledSub">—</span>
+    <button class="x" onclick="ledToggle()">×</button>
+  </div>
+  <div id="ledSummary"></div>
+  <div id="ledLog"></div>
+</div>
+<script>
+const LEDGER_API='https://script.google.com/macros/s/AKfycbwLOXe-n889nbX47EiQ4RO6ECLz9aohai0uGG1U9eDnuHB4iXDYhVPclZZuxYieAihl5A/exec';
+const LED_NAMES={
+  'daily-digest':'📰 Daily Digest','personal-secretary':'🗓️ Secretary',
+  'bk-data-snapshot':'⚡ bk2 Snapshot','bk-data-supervision':'👀 นิเทศ'
+};
+const led={loaded:false};
+
+function ledToggle(){
+  const p=document.getElementById('ledPanel');
+  p.classList.toggle('show');
+  if(p.classList.contains('show'))ledRefresh();
+}
+function ledAgo(ts){
+  const d=new Date(ts.replace(' ','T')+(ts.includes('Z')?'':'Z'));
+  const m=Math.round((Date.now()-d.getTime())/60000);
+  if(m<1)return'เมื่อกี้'; if(m<60)return m+' นาทีที่แล้ว';
+  const h=Math.round(m/60); if(h<24)return h+' ชม.ที่แล้ว';
+  return Math.round(h/24)+' วันที่แล้ว';
+}
+async function ledRefresh(){
+  document.getElementById('ledSub').textContent='กำลังโหลด…';
+  try{
+    const r=await fetch(LEDGER_API+'?action=getLedger&limit=25&t='+Date.now());
+    const d=await r.json();
+    if(!d.ok)throw new Error(d.error||'load failed');
+    const runs=d.runs||[];
+    // สรุปล่าสุดต่อ automation หนึ่งตัว
+    const latest={};
+    runs.forEach(r=>{if(!latest[r.skill])latest[r.skill]=r;});
+    const known=Object.keys(LED_NAMES);
+    document.getElementById('ledSummary').innerHTML=known.map(k=>{
+      const r=latest[k];
+      const cls=!r?'':(r.status==='success'||r.status==='ok'?'ok':'fail');
+      return `<div class="led-card ${cls}" ${r?`onclick="window.open('${r.link}','_blank')"`:''}>
+        <div class="nm"><span class="dot"></span>${LED_NAMES[k]}</div>
+        <div class="tm">${r?ledAgo(r.timestamp):'ยังไม่เคยรัน'}</div>
+      </div>`;
+    }).join('');
+    document.getElementById('ledLog').innerHTML = runs.length
+      ? runs.map(r=>`<div class="led-row" onclick="window.open('${r.link}','_blank')">
+          <div class="tt"><b>${LED_NAMES[r.skill]||r.skill}</b><span>${ledAgo(r.timestamp)}</span></div>
+          <div class="ss">${(r.summary||'').toString().slice(0,80)}</div>
+        </div>`).join('')
+      : '<div class="led-empty">ยังไม่มีประวัติการรัน</div>';
+    document.getElementById('ledSub').textContent='อัปเดต '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('ledBtn').classList.remove('ok','err');
+    document.getElementById('ledBtn').classList.add(runs.some(r=>r.status==='failure')?'err':'ok');
+  }catch(e){
+    document.getElementById('ledSub').textContent='โหลดไม่ได้';
+    document.getElementById('ledLog').innerHTML='<div class="led-empty">เชื่อมต่อ Ledger ไม่ได้: '+(e.message||'')+'</div>';
+  }
+}
+// เช็คเงียบๆ ตอนโหลดหน้า เพื่อให้ปุ่มโชว์สถานะ (เขียว/แดง) โดยไม่ต้องเปิดพาเนล
+ledRefresh();
+</script>
 </body>
 </html>
