@@ -1160,6 +1160,10 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel();});
   .ccfoot textarea:focus,.ccfoot input:focus{border-color:#7c5cff}
   .ccfoot button{background:#7c5cff;color:#fff;border:0;border-radius:11px;padding:0 15px;height:40px;font-weight:700;cursor:pointer}
   .ccfoot button:disabled{opacity:.5}
+  #ccQuick{display:flex;gap:6px;flex-wrap:wrap;padding:9px 12px 0}
+  #ccQuick button{background:#1e222e;border:1px solid #2a2f3c;color:#c9cede;border-radius:14px;
+    padding:5px 10px;font:600 11.5px/1 'Sarabun',system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+  #ccQuick button:hover{border-color:#7c5cff;color:#fff}
   .ccspin{display:inline-block;width:12px;height:12px;border:2px solid #2a2f3c;border-top-color:#7c5cff;border-radius:50%;animation:ccs .7s linear infinite;vertical-align:-2px}
   @keyframes ccs{to{transform:rotate(360deg)}}
 </style>
@@ -1171,6 +1175,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel();});
     <span class="sub" id="ccSub">—</span>
     <button class="x" onclick="ccToggle()">×</button>
   </div>
+  <div id="ccQuick"></div>
   <div id="ccLog"></div>
   <div class="ccfoot" id="ccFoot"></div>
 </div>
@@ -1185,11 +1190,34 @@ function ccMd(s){s=ccEsc(s);s=s.replace(/```([\s\S]*?)```/g,(m,c)=>'<pre>'+c.rep
 function ccAdd(cls,html){const d=document.createElement('div');d.className=cls;d.innerHTML=html;ccLog().appendChild(d);ccLog().scrollTop=ccLog().scrollHeight;return d;}
 function ccSetOnline(on){document.getElementById('ccBtn').classList.toggle('online',on);document.getElementById('ccHead').classList.toggle('on',on);}
 
+// ปุ่มลัด "ใช้บ่อย" — เรียงตาม pattern งานที่ทำซ้ำมากสุด (จากการไล่ดู session เก่า)
+// เมื่อ Ledger สะสมข้อมูล skill invocation จริงมากพอ (stage=1 จาก hook) ค่อยเปลี่ยนมาเรียงตามความถี่จริงได้
+const QUICK=[
+  {label:'🗓️ Plan my day', text:'my plan daily'},
+  {label:'📝 Feedback', text:'/feedback '},
+  {label:'📋 Quiz', text:'/quiz-maker '},
+  {label:'🎫 IT ticket', text:'/it-ticket '},
+  {label:'🚀 Deploy web', text:'ช่วย deploy เว็บแอปให้หน่อยครับ'}
+];
+function ccRenderQuick(){
+  document.getElementById('ccQuick').innerHTML=QUICK.map(q=>
+    `<button onclick="ccQuick('${q.text.replace(/'/g,"\\'")}')">${q.label}</button>`).join('');
+}
+async function ccQuick(text){
+  const p=document.getElementById('ccPanel');
+  if(!p.classList.contains('show')){p.classList.add('show');if(!cc.opened){cc.opened=true;await ccRefresh();}}
+  if(!cc.url)return;               // ออฟไลน์ — ccRefresh โชว์ข้อความไว้แล้ว
+  if(!document.getElementById('ccInp')){ if(cc.token)ccShowChat(); else return; }
+  const inp=document.getElementById('ccInp'); if(!inp)return;
+  inp.value=text; ccSend();
+}
+
 async function ccToggle(){
   const p=document.getElementById('ccPanel');
   p.classList.toggle('show');
   if(p.classList.contains('show')&&!cc.opened){cc.opened=true;await ccRefresh();}
 }
+ccRenderQuick();
 
 async function ccRefresh(){
   document.getElementById('ccSub').textContent='กำลังเชื่อมต่อ…';
