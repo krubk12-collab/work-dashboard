@@ -19,27 +19,31 @@
     overflow-x:hidden;background:#0e1430;
   }
 
-  /* ===== STAGE: ห้องทำงาน 16:9 ===== */
+  /* ===== STAGE: ห้องบัญชาการ (ธีมมืดนีออน) ===== */
   .stage{
     position:relative;width:100%;max-width:1600px;margin:0 auto;
-    aspect-ratio:16/9;min-height:100vh;
-    /* พื้นหลัง placeholder วาดด้วย CSS — จะถูกแทนด้วยรูป Canva ทีหลัง */
+    aspect-ratio:16/9;min-height:100vh;overflow:hidden;
     background:
-      radial-gradient(120% 80% at 50% -10%, #fff3d6 0%, transparent 55%),
-      linear-gradient(180deg,#ffe9c7 0%,#ffd9a8 38%,#f6b27a 38%,#e89a63 100%);
-    overflow:hidden;
+      radial-gradient(120% 90% at 50% 6%, #1b2547 0%, transparent 55%),
+      radial-gradient(90% 60% at 50% 118%, rgba(120,60,255,.22), transparent 60%),
+      linear-gradient(180deg,#0c1122 0%,#0a0d1c 55%,#06070f 100%);
   }
-  /* ถ้ามีรูป assets/room.png จะใช้รูปแทน gradient */
-  .stage.has-bg{background-image:url('assets/room.png');background-size:cover;background-position:center}
-  /* มีรูปห้องจริงแล้ว -> ซ่อนของแต่งห้องที่วาดด้วย CSS */
-  .stage.has-bg .deco{display:none}
-  /* ของแต่งห้อง (placeholder) */
-  .deco{position:absolute;opacity:.85;filter:drop-shadow(0 6px 8px rgba(0,0,0,.12))}
-  .window{left:6%;top:10%;width:22%;height:34%;background:linear-gradient(180deg,#bfe9ff,#8fd0ff);border:10px solid #fff;border-radius:14px;box-shadow:inset 0 0 0 3px #cfa46a,var(--shadow)}
-  .window::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 45%,rgba(255,255,255,.6) 50%,transparent 55%)}
-  .plant{right:7%;top:18%;width:90px;height:120px;background:radial-gradient(circle at 50% 30%,#7fd17f,#3fa05a);border-radius:50% 50% 12px 12px}
-  .plant::after{content:"";position:absolute;left:30%;bottom:-2px;width:40%;height:34px;background:#d98b5f;border-radius:6px}
-  .desk{left:0;right:0;bottom:0;height:24%;background:linear-gradient(180deg,#caa06a,#a9824f)}
+  /* แสงเรืองกลางฉาก (หลังตัวละคร) */
+  .stage::before{content:"";position:absolute;left:50%;top:6%;width:66%;height:74%;
+    transform:translateX(-50%);pointer-events:none;z-index:0;
+    background:radial-gradient(ellipse,rgba(0,229,255,.15),rgba(120,60,255,.11) 45%,transparent 70%);
+    filter:blur(26px)}
+  /* พื้นตารางนีออน perspective */
+  .stage::after{content:"";position:absolute;left:-25%;right:-25%;bottom:0;height:46%;
+    pointer-events:none;z-index:0;opacity:.72;
+    background:
+      linear-gradient(180deg,transparent,rgba(6,7,15,.92)),
+      repeating-linear-gradient(90deg,transparent 0 66px,rgba(0,229,255,.30) 66px 68px),
+      repeating-linear-gradient(0deg,transparent 0 66px,rgba(0,229,255,.16) 66px 68px);
+    transform:perspective(300px) rotateX(60deg);transform-origin:bottom}
+  /* ปิดรูปห้องเก่า + ของแต่งห้องหวานๆ */
+  .stage.has-bg{background-image:none}
+  .deco{display:none!important}
 
   /* ===== HEADER / โปรไฟล์ผู้เล่น ===== */
   .hud{
@@ -90,20 +94,20 @@
   .bd-empty{font-size:12px;color:#a59c7a;text-align:center;padding:8px 0}
   .bd-more{font-size:10px;color:#a59c7a;text-align:center;margin-top:2px}
 
-  /* ===== ตัวละคร ===== */
-  .char{position:absolute;z-index:5;cursor:pointer;width:clamp(110px,13vw,190px);
-    transition:transform .25s ease;animation:float 3.2s ease-in-out infinite;text-align:center;
-    /* เงาขอบรอบตัว ให้ตัวขาว (แพนด้า/แมว) เด้งออกจากพื้นหลังสีอ่อน */
-    filter:drop-shadow(0 11px 13px rgba(0,0,0,.22)) drop-shadow(0 0 2px rgba(70,50,90,.45))}
-  .char:nth-child(2){animation-delay:.4s}
-  .char:nth-child(3){animation-delay:.8s}
-  .char:nth-child(4){animation-delay:1.2s}
-  .char:hover{transform:translateY(-10px) scale(1.05);animation-play-state:paused}
+  /* ===== ตัวละคร (เดินไปมา + เด้งจังหวะ + หันหน้าตามทาง) ===== */
+  .char{position:absolute;z-index:5;cursor:pointer;width:clamp(120px,14vw,210px);text-align:center;
+    animation:walkbob var(--wd,10s) ease-in-out infinite;animation-delay:var(--ad,0s);
+    filter:drop-shadow(0 14px 16px rgba(0,0,0,.5)) drop-shadow(0 0 10px rgba(0,229,255,.28))}
+  /* ชั้นหันหน้า (พลิกซ้าย-ขวาตามทางเดิน โดยไม่ทำให้ป้ายชื่อกลับด้าน) */
+  .cface{display:block;animation:face var(--wd,10s) ease-in-out infinite;animation-delay:var(--ad,0s)}
   .char .body{font-size:clamp(64px,8vw,110px);line-height:1;user-select:none}
-  /* ถ้ามีไฟล์ PNG จะแสดงรูปแทน emoji */
   .char img{width:100%;display:none}
   .char.has-png .body{display:none}
   .char.has-png img{display:block}
+  /* hover: หยุดเดิน + กระโดด + เรืองแสงแรงขึ้น */
+  .char:hover,.char:hover .cface{animation-play-state:paused}
+  .char:hover img{animation:hop .5s ease-in-out infinite}
+  .char:hover{filter:drop-shadow(0 18px 22px rgba(0,0,0,.6)) drop-shadow(0 0 22px rgba(0,229,255,.75))}
 
   /* ป้ายชื่อ + การ์ดสถิติลอย */
   .tag{display:inline-block;margin-top:2px;padding:3px 12px;border-radius:999px;
@@ -118,15 +122,30 @@
   .mini{display:flex;gap:6px;justify-content:center;margin-top:6px}
   .mini b{font-size:11px;background:rgba(255,255,255,.9);padding:2px 8px;border-radius:8px;box-shadow:var(--shadow)}
 
-  /* ตำแหน่งตัวละคร */
-  #c-cow{left:8%;bottom:20%}
-  #c-cat{left:32%;bottom:14%}
-  #c-rabbit{right:30%;bottom:16%}
-  #c-panda{right:7%;bottom:21%}
+  /* ตำแหน่งตัวละคร + ตัวแปรเดิน (--dx ระยะเดิน, --f1/--f2 หันหน้า, --wd รอบ, --ad เหลื่อมเวลา) */
+  #c-cow{left:7%;bottom:19%;--dx:180px;--f1:1;--f2:-1;--wd:11s;--ad:.1s}
+  #c-cat{left:30%;bottom:13%;--dx:150px;--f1:1;--f2:-1;--wd:9s;--ad:.5s}
+  #c-rabbit{right:29%;bottom:15%;--dx:-155px;--f1:-1;--f2:1;--wd:10s;--ad:.9s}
+  #c-panda{right:6%;bottom:20%;--dx:-125px;--f1:-1;--f2:1;--wd:12.5s;--ad:1.3s}
   #c-cow .tag{background:var(--cow)} #c-cat .tag{background:var(--cat)}
   #c-rabbit .tag{background:var(--rabbit);color:#1c5a1c} #c-panda .tag{background:var(--panda)}
 
-  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+  /* เดิน: เลื่อน X ไป-กลับ + เด้ง Y เป็นจังหวะก้าว */
+  @keyframes walkbob{
+    0%{transform:translateX(0) translateY(0)}
+    12%{transform:translateX(calc(var(--dx)*.25)) translateY(-8px)}
+    25%{transform:translateX(calc(var(--dx)*.5)) translateY(0)}
+    37%{transform:translateX(calc(var(--dx)*.75)) translateY(-8px)}
+    50%{transform:translateX(var(--dx)) translateY(0)}
+    62%{transform:translateX(calc(var(--dx)*.75)) translateY(-8px)}
+    75%{transform:translateX(calc(var(--dx)*.5)) translateY(0)}
+    87%{transform:translateX(calc(var(--dx)*.25)) translateY(-8px)}
+    100%{transform:translateX(0) translateY(0)}
+  }
+  /* หันหน้าตามทิศ: ครึ่งแรกไปทางหนึ่ง ครึ่งหลังหันกลับ */
+  @keyframes face{0%,47%{transform:scaleX(var(--f1))}53%,100%{transform:scaleX(var(--f2))}}
+  /* กระโดดตอน hover */
+  @keyframes hop{0%,100%{transform:translateY(0)}45%{transform:translateY(-18px)}}
   /* ไฟ LIVE เมื่อต่อข้อมูลจริงสำเร็จ */
   .char.live .tag::after{content:"●";margin-left:5px;color:#27d367;font-size:9px;vertical-align:middle;
     animation:blink 1.4s ease-in-out infinite}
@@ -286,8 +305,9 @@
     .footer{display:none}
     .mwrap{display:flex}                      /* โชว์แถบมือถือ (ปฏิทิน + เมนู) */
     /* ตำแหน่งตัวละครเฉพาะมือถือ ให้ครบ 4 ตัว + ยกพ้นติ๊กเกอร์ */
-    #c-cow{left:3%;bottom:22%} #c-cat{left:27%;bottom:17%}
-    #c-rabbit{right:27%;bottom:18%} #c-panda{right:4%;bottom:22%}
+    /* มือถือ: ย่อระยะเดินไม่ให้ตัวหลุดจอ */
+    #c-cow{left:3%;bottom:22%;--dx:42px} #c-cat{left:27%;bottom:17%;--dx:36px}
+    #c-rabbit{right:27%;bottom:18%;--dx:-38px} #c-panda{right:4%;bottom:22%;--dx:-30px}
     .mbtn{width:34px;height:34px;font-size:16px;border-radius:11px}
     .topright{gap:6px}
     .ticker{bottom:0;height:26px}.ticker-tag{font-size:10px;padding:0 8px}.ticker-track{font-size:10px}
@@ -331,25 +351,25 @@
   <!-- ตัวละคร 4 ตัว -->
   <div class="char" id="c-cow" onclick="openPanel('cow')">
     <div class="bubble" id="b-cow"></div>
-    <div class="body">🐮</div><img src="assets/cow.png" alt="โควัว">
+    <div class="cface"><div class="body">🐮</div><img src="assets/cow.png" alt="โควัว"></div>
     <div class="tag">งานสอน</div>
     <div class="mini" id="m-cow"></div>
   </div>
   <div class="char" id="c-cat" onclick="openPanel('cat')">
     <div class="bubble" id="b-cat"></div>
-    <div class="body">🐱</div><img src="assets/cat.png" alt="แมว">
+    <div class="cface"><div class="body">🐱</div><img src="assets/cat.png" alt="แมว"></div>
     <div class="tag">เว็บ/โปรเจกต์</div>
     <div class="mini" id="m-cat"></div>
   </div>
   <div class="char" id="c-rabbit" onclick="openPanel('rabbit')">
     <div class="bubble" id="b-rabbit"></div>
-    <div class="body">🐰</div><img src="assets/rabbit.png" alt="กระต่าย">
+    <div class="cface"><div class="body">🐰</div><img src="assets/rabbit.png" alt="กระต่าย"></div>
     <div class="tag">งานนักเรียน</div>
     <div class="mini" id="m-rabbit"></div>
   </div>
   <div class="char" id="c-panda" onclick="openPanel('panda')">
     <div class="bubble" id="b-panda"></div>
-    <div class="body">🐼</div><img src="assets/panda.png" alt="แพนด้า">
+    <div class="cface"><div class="body">🐼</div><img src="assets/panda.png" alt="แพนด้า"></div>
     <div class="tag">งานส่วนตัว</div>
     <div class="mini" id="m-panda"></div>
   </div>
