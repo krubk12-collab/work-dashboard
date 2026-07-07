@@ -335,28 +335,30 @@
 
   @media(max-width:680px){
     body{padding:0;display:flex;flex-direction:column;min-height:100vh}
-    /* คงสัดส่วน 16:9 ฉากห้องไม่ให้ซูมเพี้ยน + จัดฉากไว้บน */
-    .stage{aspect-ratio:16/9;min-height:auto;width:100%;flex:0 0 auto}
-    .char{width:52px}                        /* ตัวเล็กลงให้พอดีฉาก 16:9 */
-    .char .body{font-size:38px}
-    .char .tag{font-size:8px;padding:2px 6px}
+    /* ฉากสูงขึ้นบนมือถือ (เลิกบังคับ 16:9) ให้ตัวละคร+HUD มีที่หายใจ ไม่เบียด/บังกัน */
+    .stage{aspect-ratio:auto;height:min(58vh,510px);min-height:auto;width:100%;flex:0 0 auto}
+    .char{width:66px}
+    .char .body{font-size:44px}
+    .char .tag{font-size:8.5px;padding:2px 7px}
     .mini,.bubble,.board{display:none}       /* มือถือ: ซ่อนบอร์ดผนัง+สถิติย่อ ใช้แตะ/การ์ดล่างแทน */
-    .hud{padding:6px 9px;gap:7px}.avatar{width:34px;height:34px;font-size:20px}
-    .hud-info h1{font-size:12px}.hud-info .pmail{font-size:8px}.hud-info .lv{font-size:9px}
-    .xp{width:108px;height:9px}
-    .clock{padding:5px 9px}.clock .t{font-size:14px}.clock .d{font-size:9px}
+    /* HUD กระชับ: ซ่อนอีเมล + แถบ XP เหลือชื่อ+เลเวล ให้ป้ายเล็กลงไม่บังฉาก */
+    .hud{padding:5px 8px;gap:6px;border-radius:13px}
+    .hud-info .pmail,.xp{display:none}
+    .avatar{width:30px;height:30px;font-size:17px}
+    .hud-info h1{font-size:12.5px}.hud-info .lv{font-size:10px;margin-top:0}
+    /* ปุ่ม+นาฬิกาขวาบน กระชับไม่ให้ล้นขอบจอ */
+    .topright{gap:5px;top:3%;right:2%}
+    .mbtn{width:30px;height:30px;font-size:14px;border-radius:10px}
+    .clock{padding:4px 8px}.clock .t{font-size:13px}.clock .d{display:none}
+    /* ตำแหน่งตัวละคร (ยกให้พ้นการ์ดสรุปด้านล่าง) + ย่อระยะเดิน */
+    #c-cow{left:3%;bottom:24%;--dx:46px} #c-cat{left:27%;bottom:20%;--dx:38px}
+    #c-rabbit{right:27%;bottom:21%;--dx:-40px} #c-panda{right:3%;bottom:24%;--dx:-32px}
     .panel{width:94vw;max-height:86vh}
     .acts{flex-wrap:wrap}.act{min-width:46%}
     .footer{display:none}
     .mwrap{display:flex}                      /* โชว์แถบมือถือ (ปฏิทิน + เมนู) */
-    /* ตำแหน่งตัวละครเฉพาะมือถือ ให้ครบ 4 ตัว + ยกพ้นติ๊กเกอร์ */
-    /* มือถือ: ย่อระยะเดินไม่ให้ตัวหลุดจอ */
-    #c-cow{left:3%;bottom:22%;--dx:42px} #c-cat{left:27%;bottom:17%;--dx:36px}
-    #c-rabbit{right:27%;bottom:18%;--dx:-38px} #c-panda{right:4%;bottom:22%;--dx:-30px}
-    .mbtn{width:34px;height:34px;font-size:16px;border-radius:11px}
-    .topright{gap:6px}
     .ticker{bottom:0;height:26px}.ticker-tag{font-size:10px;padding:0 8px}.ticker-track{font-size:10px}
-    /* การ์ดสรุป: ย้ายเป็นแถวเลื่อนแนวนอนเหนือติ๊กเกอร์ */
+    /* การ์ดสรุป: แถวเลื่อนแนวนอนเหนือติ๊กเกอร์ */
     .sumbar{flex-direction:row;left:2%;right:2%;width:auto;top:auto;bottom:32px;overflow-x:auto;padding-bottom:2px}
     .sumcard{flex:0 0 auto;min-width:132px}
   }
@@ -1639,8 +1641,8 @@ function openReader(type){
   body.innerHTML='<div class="rd-loading">กำลังโหลด…</div>';
   if(type==='digest') renderDigest();
   else if(type==='gpf') body.innerHTML=renderGpf();
-  else if(type==='today') body.innerHTML=renderDay(0);
-  else if(type==='tomorrow') body.innerHTML=renderDay(1);
+  else if(type==='today') renderSecretary('morning');
+  else if(type==='tomorrow') renderSecretary('tonight');
 }
 function closeReader(){ document.getElementById('rdScrim').classList.remove('on'); document.getElementById('reader').classList.remove('on'); }
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeReader(); });
@@ -1709,6 +1711,48 @@ function renderDay(offset){
 }
 function TH_DOW_FULL_(i){return ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'][i];}
 
+/* ---------- สรุปวันนี้/พรุ่งนี้ = log ข้อความที่เลขาส่ง LINE (summaries/) ---------- */
+const SUMM_API='https://api.github.com/repos/krubk12-collab/daily-digest/contents/summaries';
+const SUMM_RAW='https://raw.githubusercontent.com/krubk12-collab/daily-digest/main/summaries/';
+async function loadSummaryList(){
+  try{
+    const j=await (await fetch(SUMM_API)).json();
+    const files=(Array.isArray(j)?j:[]).map(f=>f.name);
+    const morning=[],tonight=[];
+    files.forEach(n=>{const m=n.match(/^(\d{4}-\d{2}-\d{2})-(morning|tonight)\.md$/);if(m)(m[2]==='morning'?morning:tonight).push(m[1]);});
+    morning.sort(); tonight.sort();
+    SUM.summaries={morning,tonight};
+  }catch(e){ SUM.summaries={morning:[],tonight:[]}; }
+  updateSumCards();
+}
+/* ข้อความเลขา (ไม่ใช่ markdown แท้) → HTML อ่านง่าย รักษาบรรทัด/เส้นคั่น/หัวข้อ/บุลเลต */
+function summaryToHtml(txt){
+  let html='';
+  for(const raw of String(txt).replace(/\r/g,'').split('\n')){
+    const t=raw.trim();
+    if(/^━{3,}$/.test(t)){ html+='<hr style="border:0;border-top:1px solid rgba(255,255,255,.12);margin:9px 0">'; continue; }
+    if(!t){ html+='<div style="height:5px"></div>'; continue; }
+    let s=esc_(t);
+    if(/^•/.test(t)) s='<span style="color:#9fdcc2">'+s+'</span>';
+    else if(/[:：]$/.test(t)||/^[🌅🌙📖📌🔍📅⏰🗓️]/.test(t)) s='<strong>'+s+'</strong>';
+    html+='<div>'+s+'</div>';
+  }
+  return html;
+}
+async function renderSecretary(mode,date){
+  const list=(SUM.summaries&&SUM.summaries[mode])||[];
+  const body=document.getElementById('rdBody'), hist=document.getElementById('rdHist');
+  if(!list.length){ hist.innerHTML='';
+    body.innerHTML='<p class="muted">ยังไม่มีบันทึกจากเลขา — จะปรากฏหลังเลขาส่ง LINE รอบถัดไป ('+(mode==='morning'?'~06:00 น.':'~18:00 น.')+')</p>'; return; }
+  const sel=date||list[list.length-1];
+  hist.innerHTML=list.slice().reverse().map(d=>`<button class="${d===sel?'active':''}" onclick="renderSecretary('${mode}','${d}')">${thDate_(d)}</button>`).join('');
+  body.innerHTML='<div class="rd-loading">กำลังโหลด…</div>';
+  try{
+    const txt=await (await fetch(SUMM_RAW+sel+'-'+mode+'.md?t='+Date.now())).text();
+    body.innerHTML=summaryToHtml(txt); body.scrollTop=0;
+  }catch(e){ body.innerHTML='<p class="muted">โหลดไม่สำเร็จ</p>'; }
+}
+
 /* ---------- อัปเดตบรรทัดย่อยในการ์ด ---------- */
 function updateSumCards(){
   // digest
@@ -1721,14 +1765,14 @@ function updateSumCards(){
     const el=document.getElementById('sc-gpf');
     el.innerHTML=up>dn?('<span class="sc-up">ขาขึ้น '+up+' แผน ▲</span>'):dn>up?('<span class="sc-dn">ขาลง '+dn+' แผน ▼</span>'):'ทรงตัว';
   }
-  // today/tomorrow counts
-  [['today',0],['tomorrow',1]].forEach(([id,off])=>{
-    const d=new Date(); d.setDate(d.getDate()+off); const ds=fmtDate(d);
-    const n=(SUM.cal||[]).filter(e=>asDateStr(e.date)===ds).length;
-    const el=document.getElementById('sc-'+id); if(el) el.textContent=n?(n+' นัด/กิจกรรม'):'ไม่มีนัด';
-  });
+  // today/tomorrow = log เลขา (morning/tonight)
+  if(SUM.summaries){
+    const mo=SUM.summaries.morning||[], tn=SUM.summaries.tonight||[];
+    const et=document.getElementById('sc-today'); if(et) et.textContent=mo.length?('เลขาส่ง '+thDate_(mo[mo.length-1])):'รอเลขาส่ง (~06:00)';
+    const em=document.getElementById('sc-tomorrow'); if(em) em.textContent=tn.length?('เลขาส่ง '+thDate_(tn[tn.length-1])):'รอเลขาส่ง (~18:00)';
+  }
 }
-loadDigestList();
+loadDigestList(); loadSummaryList();
 </script>
 </body>
 </html>
