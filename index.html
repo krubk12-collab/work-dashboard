@@ -114,6 +114,46 @@
   /* ===== พื้นหลังเลขไหลสไตล์ Matrix ===== */
   #matrix{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;opacity:.6}
 
+  /* ===== การ์ดสรุปข้อมูล (คลิกอ่าน + ย้อนหลัง) ===== */
+  .sumbar{position:absolute;left:3%;top:23%;z-index:8;display:flex;flex-direction:column;gap:8px;width:clamp(158px,15vw,200px)}
+  .sumcard{display:flex;align-items:center;gap:9px;cursor:pointer;color:#eaf2ff;
+    background:rgba(18,25,46,.74);backdrop-filter:blur(8px);border:1px solid rgba(0,229,255,.22);
+    border-radius:13px;padding:9px 11px;transition:transform .18s,border-color .18s,box-shadow .18s}
+  .sumcard:hover{transform:translateX(4px);border-color:rgba(0,229,255,.6);box-shadow:0 0 16px rgba(0,229,255,.22)}
+  .sumcard .si{font-size:19px;flex:0 0 auto;line-height:1}
+  .sumcard .st{flex:1;min-width:0}
+  .sumcard .st b{display:block;font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sumcard .st em{font-style:normal;font-size:10.5px;color:#8fb8d8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+  .sumcard .sgo{font-size:12px;color:#00e5ff;flex:0 0 auto}
+  .sc-up{color:#37e39a}.sc-dn{color:#ff6e7a}
+  /* หน้าอ่าน (reader modal) */
+  #rdScrim{position:fixed;inset:0;background:rgba(4,6,14,.66);backdrop-filter:blur(4px);z-index:30;opacity:0;pointer-events:none;transition:.2s}
+  #rdScrim.on{opacity:1;pointer-events:auto}
+  .reader{position:fixed;z-index:31;left:50%;top:50%;transform:translate(-50%,-48%) scale(.97);
+    width:min(760px,94vw);max-height:88vh;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:.22s;
+    background:#0e1424;border:1px solid rgba(0,229,255,.25);border-radius:18px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .reader.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+  .rd-head{display:flex;align-items:center;gap:10px;padding:13px 18px;background:linear-gradient(135deg,#14203c,#0e1424);border-bottom:1px solid rgba(0,229,255,.18)}
+  .rd-head h2{font-size:16px;font-weight:800;color:#eaf2ff;flex:1;margin:0}
+  .rd-x{cursor:pointer;border:0;background:rgba(255,255,255,.1);color:#cfe;width:30px;height:30px;border-radius:9px;font-size:15px}
+  .rd-hist{display:flex;gap:6px;padding:8px 14px;overflow-x:auto;border-bottom:1px solid rgba(255,255,255,.07);background:#0b1120}
+  .rd-hist:empty{display:none}
+  .rd-hist button{white-space:nowrap;cursor:pointer;font-size:11.5px;padding:4px 10px;border-radius:8px;border:1px solid rgba(0,229,255,.2);background:rgba(0,229,255,.06);color:#bfe}
+  .rd-hist button.active{background:#00e5ff;color:#053;font-weight:700;border-color:#00e5ff}
+  .rd-body{padding:16px 20px;overflow-y:auto;color:#dfe7f2;font-size:14px;line-height:1.7}
+  .rd-body h1{font-size:18px;margin:.3em 0 .4em;color:#eaf2ff}
+  .rd-body h2{font-size:15px;margin:1em 0 .3em;color:#7fecc4;border-left:3px solid #00e5ff;padding-left:9px}
+  .rd-body h3{font-size:13.5px;margin:.7em 0 .2em;color:#bfe0ff}
+  .rd-body p{margin:.5em 0}.rd-body ul{margin:.4em 0;padding-left:1.35em}.rd-body li{margin:.25em 0}
+  .rd-body strong{color:#fff}.rd-body code{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:5px;font-size:.9em}
+  .rd-body .muted{color:#8fb8d8}.rd-loading{text-align:center;color:#8fb8d8;padding:34px}
+  .rd-row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+  .rd-row .rt{font-weight:600}.rd-row .rv{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .rd-ev{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+  .rd-ev .rd-d{flex:0 0 44px;text-align:center;color:#7fecc4;font-weight:700}
+  .rd-ev .rd-d small{display:block;color:#8fb8d8;font-weight:400;font-size:10px}
+  .rd-ev.hol .rd-d{color:#ff8a8a}
+
   /* ป้ายชื่อ + การ์ดสถิติลอย */
   .tag{display:inline-block;margin-top:2px;padding:3px 12px;border-radius:999px;
     font-size:13px;font-weight:700;color:#fff;box-shadow:var(--shadow)}
@@ -316,9 +356,14 @@
     .mbtn{width:34px;height:34px;font-size:16px;border-radius:11px}
     .topright{gap:6px}
     .ticker{bottom:0;height:26px}.ticker-tag{font-size:10px;padding:0 8px}.ticker-track{font-size:10px}
+    /* การ์ดสรุป: ย้ายเป็นแถวเลื่อนแนวนอนเหนือติ๊กเกอร์ */
+    .sumbar{flex-direction:row;left:2%;right:2%;width:auto;top:auto;bottom:32px;overflow-x:auto;padding-bottom:2px}
+    .sumcard{flex:0 0 auto;min-width:132px}
   }
   /* จอเตี้ย/แนวนอน (เช่นมือถือหมุนแนวนอน) — ตัวละครใหญ่เกินจะล้น+ทับกัน จึงย่อตามความสูง + ย่อระยะเดิน + ย่อบอร์ด */
   @media(max-height:600px){
+    .sumbar{flex-direction:row;left:2%;right:auto;width:auto;top:8px;gap:6px;max-width:70%;overflow-x:auto}
+    .sumcard{flex:0 0 auto;min-width:120px;padding:6px 9px}
     .char{width:clamp(66px,15vh,132px)}
     #c-cow{left:4%;bottom:16%;--dx:70px} #c-cat{left:27%;bottom:12%;--dx:56px}
     #c-rabbit{right:27%;bottom:13%;--dx:-60px} #c-panda{right:4%;bottom:16%;--dx:-50px}
@@ -330,6 +375,15 @@
 <body>
 <div class="stage" id="stage">
   <canvas id="matrix" aria-hidden="true"></canvas>
+
+  <!-- การ์ดสรุปข้อมูล (คลิกเปิดอ่าน + ดูย้อนหลัง) -->
+  <div class="sumbar" id="sumbar">
+    <div class="sumcard" onclick="openReader('digest')"><span class="si">📰</span><span class="st"><b>Daily Digest</b><em id="sc-digest">กำลังโหลด…</em></span><span class="sgo">›</span></div>
+    <div class="sumcard" onclick="openReader('gpf')"><span class="si">💰</span><span class="st"><b>สัญญาณ กบข.</b><em id="sc-gpf">กำลังโหลด…</em></span><span class="sgo">›</span></div>
+    <div class="sumcard" onclick="openReader('today')"><span class="si">☀️</span><span class="st"><b>สรุปวันนี้</b><em id="sc-today">กำลังโหลด…</em></span><span class="sgo">›</span></div>
+    <div class="sumcard" onclick="openReader('tomorrow')"><span class="si">🌙</span><span class="st"><b>สรุปพรุ่งนี้</b><em id="sc-tomorrow">กำลังโหลด…</em></span><span class="sgo">›</span></div>
+  </div>
+
   <!-- ของแต่งห้อง (placeholder จนกว่าจะมีรูป Canva) -->
   <div class="deco desk"></div>
   <div class="deco window"></div>
@@ -928,6 +982,7 @@ async function loadReal(){
   // 🐼 งานส่วนตัว (A: ชีต To-do + B: auto-digest + 📅 ปฏิทิน)
   try{
     const [todos,calEvents]=await Promise.all([gviz(CFG.personalSS),loadCalendar()]);
+    try{ SUM.cal=calEvents; updateSumCards(); }catch(_){}
     const p=computePersonal(todos,ctx,calEvents);
     DATA.panda=p.card; xpTotal+=p.xp; anyLive=true;
     renderBoard(p.card.calendar);                       // อัปเดตบอร์ดผนัง
@@ -989,6 +1044,7 @@ async function loadGPF(){
     if(!rows.length)return;
     const cols=Object.keys(rows[0]);
     const planCols=cols.filter(c=>c&&c.indexOf('แผน')===0);
+    try{ SUM.gpf={rows,cols,planCols}; updateSumCards(); }catch(_){}
     const last=rows[rows.length-1],prev=rows[rows.length-2]||{};
     const num=v=>parseFloat(String(v==null?'':v).replace(/,/g,''));
     const items=[];
@@ -1531,6 +1587,148 @@ async function ledRefresh(){
 }
 // เช็คเงียบๆ ตอนโหลดหน้า เพื่อให้ปุ่มโชว์สถานะ (เขียว/แดง) โดยไม่ต้องเปิดพาเนล
 ledRefresh();
+</script>
+
+<!-- ===== หน้าอ่านการ์ดสรุป (Daily Digest / กบข. / วันนี้ / พรุ่งนี้) ===== -->
+<div id="rdScrim" onclick="closeReader()"></div>
+<div class="reader" id="reader" role="dialog" aria-modal="true">
+  <div class="rd-head"><span id="rdIcon">📰</span><h2 id="rdTitle">—</h2><button class="rd-x" onclick="closeReader()" aria-label="ปิด">✕</button></div>
+  <div class="rd-hist" id="rdHist"></div>
+  <div class="rd-body" id="rdBody"></div>
+</div>
+<script>
+/* ================= การ์ดสรุปข้อมูล + หน้าอ่าน (มีย้อนหลัง) ================= */
+const SUM={cal:[],gpf:null,digests:null};
+const DIGEST_API='https://api.github.com/repos/krubk12-collab/daily-digest/contents/digests';
+const DIGEST_RAW='https://raw.githubusercontent.com/krubk12-collab/daily-digest/main/digests/';
+
+function thDate_(iso){ // 'YYYY-MM-DD' -> 'D เดือน ปีพ.ศ.' (รองรับทั้ง input ค.ศ.และ พ.ศ.)
+  const m=String(iso).match(/(\d{4})-(\d{2})-(\d{2})/); if(!m) return iso;
+  const y=+m[1], be=y>=2500?y:y+543;   // ถ้า ≥2500 แปลว่าเป็น พ.ศ.อยู่แล้ว ไม่บวกซ้ำ
+  return (+m[3])+' '+TH_MON[(+m[2])-1]+' '+be;
+}
+function esc_(s){return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+/* markdown → HTML แบบเบา (หัวข้อ/ตัวหนา/ลิสต์/ย่อหน้า) */
+function mdToHtml(md){
+  const lines=String(md).replace(/\r/g,'').split('\n'); let html='',inUl=false;
+  const closeUl=()=>{ if(inUl){html+='</ul>';inUl=false;} };
+  const inline=s=>esc_(s).replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>');
+  for(let raw of lines){
+    const t=raw.trim();
+    if(!t){ closeUl(); continue; }
+    let m;
+    if(m=t.match(/^###\s+(.*)/)){ closeUl(); html+='<h3>'+inline(m[1])+'</h3>'; }
+    else if(m=t.match(/^##\s+(.*)/)){ closeUl(); html+='<h2>'+inline(m[1])+'</h2>'; }
+    else if(m=t.match(/^#\s+(.*)/)){ closeUl(); html+='<h1>'+inline(m[1])+'</h1>'; }
+    else if(m=t.match(/^[-*]\s+(.*)/)){ if(!inUl){html+='<ul>';inUl=true;} html+='<li>'+inline(m[1])+'</li>'; }
+    else { closeUl(); html+='<p>'+inline(t)+'</p>'; }
+  }
+  closeUl(); return html;
+}
+
+function openReader(type){
+  document.getElementById('rdScrim').classList.add('on');
+  document.getElementById('reader').classList.add('on');
+  document.getElementById('rdHist').innerHTML='';
+  const meta={digest:['📰','Daily Digest — สรุปข่าวประจำวัน'],gpf:['💰','สัญญาณ กบข. (NAV แผนลงทุน)'],
+    today:['☀️','สรุปวันนี้'],tomorrow:['🌙','สรุปพรุ่งนี้']}[type];
+  document.getElementById('rdIcon').textContent=meta[0];
+  document.getElementById('rdTitle').textContent=meta[1];
+  const body=document.getElementById('rdBody');
+  body.innerHTML='<div class="rd-loading">กำลังโหลด…</div>';
+  if(type==='digest') renderDigest();
+  else if(type==='gpf') body.innerHTML=renderGpf();
+  else if(type==='today') body.innerHTML=renderDay(0);
+  else if(type==='tomorrow') body.innerHTML=renderDay(1);
+}
+function closeReader(){ document.getElementById('rdScrim').classList.remove('on'); document.getElementById('reader').classList.remove('on'); }
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeReader(); });
+
+/* ---------- Daily Digest (ย้อนหลังทุกวันที่มีไฟล์) ---------- */
+async function loadDigestList(){
+  try{
+    const r=await fetch(DIGEST_API); const j=await r.json();
+    SUM.digests=(Array.isArray(j)?j:[]).filter(f=>/\.md$/.test(f.name)).map(f=>f.name.replace(/\.md$/,'')).sort();
+  }catch(e){ SUM.digests=[]; }
+  updateSumCards();
+}
+async function renderDigest(date){
+  const list=SUM.digests||[]; const body=document.getElementById('rdBody');
+  if(!list.length){ body.innerHTML='<p class="muted">ยังไม่มีไฟล์ Daily Digest</p>'; return; }
+  const sel=date||list[list.length-1];
+  const hist=document.getElementById('rdHist');
+  hist.innerHTML=list.slice().reverse().map(d=>`<button class="${d===sel?'active':''}" onclick="renderDigest('${d}')">${thDate_(d)}</button>`).join('');
+  body.innerHTML='<div class="rd-loading">กำลังโหลดบันทึกวันที่ '+thDate_(sel)+'…</div>';
+  try{
+    const md=await (await fetch(DIGEST_RAW+sel+'.md?t='+Date.now())).text();
+    body.innerHTML=mdToHtml(md); body.scrollTop=0;
+  }catch(e){ body.innerHTML='<p class="muted">โหลดไม่สำเร็จ</p>'; }
+}
+
+/* ---------- สัญญาณ กบข. (คำนวณจากชีต 'รวม' ที่โหลดไว้) ---------- */
+function gpfSignal_(rows,pc){
+  const num=v=>parseFloat(String(v==null?'':v).replace(/,/g,''));
+  const series=rows.map(r=>num(r[pc])).filter(isFinite);
+  if(series.length<2) return null;
+  const last=series[series.length-1];
+  const base=series.length>6?series[series.length-6]:series[0];
+  const chg=base?((last-base)/base*100):0;
+  const sig=chg>0.15?['▲','sc-up','ขาขึ้น']:chg<-0.15?['▼','sc-dn','ขาลง']:['▬','muted','ทรงตัว'];
+  return {last,chg,sig};
+}
+function renderGpf(){
+  const g=SUM.gpf;
+  if(!g||!g.rows.length) return '<p class="muted">ยังไม่มีข้อมูล NAV กบข.</p>';
+  const dateCol=g.cols[0], lastRow=g.rows[g.rows.length-1];
+  let up=0,dn=0,rows='';
+  g.planCols.forEach(pc=>{
+    const s=gpfSignal_(g.rows,pc); if(!s) return;
+    if(s.chg>0.15)up++; else if(s.chg<-0.15)dn++;
+    rows+=`<div class="rd-row"><span class="rt">${esc_(pc.replace('แผน','').trim())}</span>`
+      +`<span class="rv">${s.last.toFixed(4)} <b class="${s.sig[1]}">${s.sig[0]} ${(s.chg>=0?'+':'')+s.chg.toFixed(2)}% <small>(${s.sig[2]})</small></b></span></div>`;
+  });
+  const dstr=lastRow[dateCol]?thDate_(asDateStr(lastRow[dateCol])):'';
+  return `<p class="muted">ข้อมูลล่าสุด ${dstr} · เทียบแนวโน้ม ~5 วัน · ขาขึ้น ${up} / ขาลง ${dn} แผน</p>`+rows
+    +`<p class="muted" style="margin-top:12px">* สัญญาณคำนวณจากราคา NAV เทียบ ~5 วันก่อนหน้า เพื่อดูทิศทาง ไม่ใช่คำแนะนำการลงทุน</p>`;
+}
+
+/* ---------- สรุปวันนี้ / พรุ่งนี้ (จากปฏิทินที่โหลดไว้) ---------- */
+function renderDay(offset){
+  const d=new Date(); d.setDate(d.getDate()+offset); const ds=fmtDate(d);
+  const evs=(SUM.cal||[]).filter(e=>asDateStr(e.date)===ds)
+    .sort((a,b)=>String(a.time||'').localeCompare(String(b.time||'')));
+  const head=`<h2>${offset===0?'วันนี้':'พรุ่งนี้'} · ${TH_DOW_FULL_(d.getDay())} ${thDate_(ds)}</h2>`;
+  if(!evs.length) return head+'<p class="muted">ไม่มีนัดหมาย/กิจกรรมในปฏิทินวันนี้ 🎉</p>'
+    +'<p class="muted">* ดึงจาก Google Calendar (ปฏิทินหลัก) — กรอง "สำนักงาน" ออกแล้ว</p>';
+  return head+evs.map(e=>{
+    const dd=new Date(asDateStr(e.date)+'T00:00:00');
+    return `<div class="rd-ev ${e.kind==='holiday'?'hol':''}"><div class="rd-d">${dd.getDate()}<small>${TH_MON[dd.getMonth()]}</small></div>`
+      +`<div><b>${esc_(e.title)}</b><br><span class="muted">${e.time?esc_(e.time)+' น.':(e.all_day?'ทั้งวัน':'')}${e.kind==='holiday'?' · วันหยุด':''}</span></div></div>`;
+  }).join('')+'<p class="muted" style="margin-top:12px">* ดึงสดจาก Google Calendar</p>';
+}
+function TH_DOW_FULL_(i){return ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'][i];}
+
+/* ---------- อัปเดตบรรทัดย่อยในการ์ด ---------- */
+function updateSumCards(){
+  // digest
+  const dg=SUM.digests;
+  if(dg){ const el=document.getElementById('sc-digest');
+    el.textContent=dg.length?('ล่าสุด '+thDate_(dg[dg.length-1])+' · ย้อนหลัง '+dg.length+' วัน'):'ยังไม่มีบันทึก'; }
+  // gpf
+  if(SUM.gpf&&SUM.gpf.rows.length){ let up=0,dn=0;
+    SUM.gpf.planCols.forEach(pc=>{const s=gpfSignal_(SUM.gpf.rows,pc);if(s){if(s.chg>0.15)up++;else if(s.chg<-0.15)dn++;}});
+    const el=document.getElementById('sc-gpf');
+    el.innerHTML=up>dn?('<span class="sc-up">ขาขึ้น '+up+' แผน ▲</span>'):dn>up?('<span class="sc-dn">ขาลง '+dn+' แผน ▼</span>'):'ทรงตัว';
+  }
+  // today/tomorrow counts
+  [['today',0],['tomorrow',1]].forEach(([id,off])=>{
+    const d=new Date(); d.setDate(d.getDate()+off); const ds=fmtDate(d);
+    const n=(SUM.cal||[]).filter(e=>asDateStr(e.date)===ds).length;
+    const el=document.getElementById('sc-'+id); if(el) el.textContent=n?(n+' นัด/กิจกรรม'):'ไม่มีนัด';
+  });
+}
+loadDigestList();
 </script>
 </body>
 </html>
