@@ -432,9 +432,13 @@ const CFG={
   // 🐱 เว็บ/โปรเจกต์ — ใช้ DASH_API เดิม (apps+todos+sheets, CORS เปิด fetch ได้)
   dashApi:'https://script.google.com/macros/s/AKfycbxCYo2PchMP09jqu9LkAwUlrvrJuTCy0pvyy6jGrE0ky6qYhdFJ-QVDrv9xqH23MYaJ/exec',
   todosSheetUrl:'https://docs.google.com/spreadsheets/d/1DlRZ6Q4H6XrGB4bFLz9fTs8wo9ZSQSvhaubdz7P2980/edit',
-  // 🐰 งานนักเรียน — student_profile (gviz หลายชีต)
+  // 🐰 งานนักเรียน — student_profile (gviz หลายชีต) + เยี่ยมบ้านจริง 2569 (krubk35)
   studentSS:'1xOdkgx-jJffJn8_1qbVhKZTcCpNlxCkd0bAfADe-3Lg',
   studentUrl:'https://sites.google.com/nonedu2.go.th/student/',
+  // 🏠 เยี่ยมบ้าน — ข้อมูลจริงปีการศึกษา 2569 จากระบบ krubk35 (ยิง ?dash= พารามิเตอร์ว่าง = ทั้งโรงเรียน)
+  visitApi:'https://script.google.com/macros/s/AKfycbykpbK2NNJsNM_ZZqihIXIhpFwf3mR1DJIlWJGpNvyLcKG3awTqcODupGGMA35FYpbiuQ/exec',
+  // 👀 งานนิเทศ — snapshot ผลนิเทศ PACAKIDs (bk-data, กรองปี 2569)
+  supervisionUrl:'https://krubk12-collab.github.io/bk-data/supervision.json',
   // 🐼 งานส่วนตัว — A) ชีต To-do ส่วนตัว (สร้างใหม่ บัญชีโรงเรียน) + B) auto-digest จากหมวดอื่น
   personalSS:'1yU6E4Wp0fdX_NYCo_of2wSBSYvV3XMPy4zwSAOPQTOY',
   personalUrl:'https://docs.google.com/spreadsheets/d/1yU6E4Wp0fdX_NYCo_of2wSBSYvV3XMPy4zwSAOPQTOY/edit',
@@ -626,8 +630,9 @@ function computeProjects(d){
   };
 }
 
-// 🐰 คำนวณการ์ดงานนักเรียน จาก StudentProfiles + HealthCheck + HomeVisit + GoodDeeds
-function computeStudents(profiles,health,visits,deeds){
+// 🐰 คำนวณการ์ดงานนักเรียน จาก StudentProfiles + HealthCheck + GoodDeeds (gviz)
+//    + เยี่ยมบ้านจริงปี 2569 จากระบบ krubk35 (hv = ก้อน data จาก ?dash=)
+function computeStudents(profiles,health,deeds,hv){
   const today=fmtDate(new Date()), T=CFG.teacherId;
   const cls=cid=>CLASS_MAP[cid]||cid||'';
   const distinct=(arr,k)=>new Set(arr.filter(r=>r[k]!=null&&String(r[k]).trim()).map(r=>String(r[k]).trim())).size;
@@ -636,11 +641,14 @@ function computeStudents(profiles,health,visits,deeds){
   const myHealth=health.filter(r=>String(r.teacher_id).trim()===T);
   const healthToday=myHealth.filter(r=>asDateStr(r.date)===today);
   const healthTodayStu=new Set(healthToday.map(r=>String(r.student_id).trim())).size;
-  const myVisits=visits.filter(r=>String(r.teacher_id).trim()===T && asDateStr(r.visit_date)>=CFG.termStart);
-  const visitedStu=new Set(myVisits.map(r=>String(r.student_id).trim())).size;
   const myDeeds=deeds.filter(r=>String(r.teacher_id).trim()===T);
   const deedPts=myDeeds.reduce((s,r)=>s+(Number(r.points)||0),0);
-  const coverage=totalProfiles?Math.round(visitedStu/totalProfiles*100):0;
+
+  // 🏠 เยี่ยมบ้าน — ข้อมูลจริงปีการศึกษา 2569 ทั้งโรงเรียน (krubk35)
+  const hvTotal=(hv&&Number(hv.totalStudents))||0;
+  const hvVisited=(hv&&Number(hv.visitedStudents))||0;
+  const hvPending=(hv&&Number(hv.pendingStudents))||Math.max(0,hvTotal-hvVisited);
+  const coverage=hvTotal?Math.round(hvVisited/hvTotal*100):0;
 
   // ตรวจสุขภาพวันนี้ (รายคน)
   const healthList=healthToday.map(r=>({stu:String(r.student_id).trim(),cls:cls(r.class_id),
@@ -651,30 +659,30 @@ function computeStudents(profiles,health,visits,deeds){
       pts:Number(r.points)||0,cls:cls(r.class_id)}));
 
   const badges=[];
+  if(hvTotal) badges.push('🏠 เยี่ยมบ้าน '+hvVisited+'/'+hvTotal+' คน');
   if(totalProfiles) badges.push('👤 '+totalProfiles+' โปรไฟล์');
-  if(visitedStu) badges.push('🏠 เยี่ยมบ้าน '+visitedStu+' คน');
   if(deedPts) badges.push('⭐ ความดี '+deedPts+' แต้ม');
   if(myHealth.length) badges.push('🩺 ตรวจสุขภาพ '+myHealth.length+' ครั้ง');
   if(!badges.length) badges.push('🌱 เริ่มบันทึกข้อมูลนักเรียน');
 
   let bubble;
   if(healthTodayStu>0) bubble='วันนี้ตรวจสุขภาพแล้ว '+healthTodayStu+' คน!';
-  else if(visitedStu>0) bubble='เยี่ยมบ้านไปแล้ว '+visitedStu+' คน เก่งมาก!';
+  else if(coverage>0) bubble='เยี่ยมบ้านทั้งโรงเรียนไปแล้ว '+coverage+'% (ปี 2569)';
   else bubble='มาดูแลน้องๆ กันเถอะ 🐰';
 
   return {
-    card:{title:'งานนักเรียน',subtitle:'เยี่ยมบ้าน '+coverage+'% ('+visitedStu+'/'+totalProfiles+' คน)',
+    card:{title:'งานนักเรียน',subtitle:'เยี่ยมบ้านทั้งโรงเรียน '+coverage+'% ('+hvVisited+'/'+hvTotal+' คน · 2569)',
       color:'#a0e7a0',bubble,
-      stats:[['นักเรียนมีโปรไฟล์',totalProfiles+' คน'],
+      stats:[['เยี่ยมบ้าน (2569)',hvVisited+' / '+hvTotal+' คน'],
+             ['ยังไม่ได้เยี่ยม',hvPending+' คน'],
              ['ตรวจสุขภาพวันนี้',healthTodayStu+' คน'],
-             ['เยี่ยมบ้านสะสม',visitedStu+' คน'],
              ['บันทึกความดี',myDeeds.length+' ครั้ง ('+deedPts+' แต้ม)']],
       progress:coverage,badges,
       healthToday:healthList,goodDeeds,
-      links:[{label:'👧 เปิดระบบนักเรียน',url:CFG.studentUrl}],
-      quote:visitedStu<totalProfiles?'เยี่ยมบ้านให้ครบทุกคนนะ น้องๆ รออยู่ 🏠':'ดูแลน้องๆ ครบทุกคนเลย เยี่ยมมาก!'},
-    xp:myDeeds.length*5+myVisits.length*10+myHealth.length*2,
-    summary:{totalProfiles,visitedStu,pendingVisits:Math.max(0,totalProfiles-visitedStu),healthTodayStu}
+      links:[{label:'🏠 เปิดระบบเยี่ยมบ้าน',url:CFG.visitApi},{label:'👧 ระบบนักเรียน',url:CFG.studentUrl}],
+      quote:coverage<100?'เยี่ยมบ้านให้ครบทุกคนนะ น้องๆ รออยู่ 🏠':'ดูแลน้องๆ ครบทุกคนเลย เยี่ยมมาก!'},
+    xp:myDeeds.length*5+myHealth.length*2+Math.round(coverage/5),
+    summary:{totalProfiles,visitedStu:hvVisited,pendingVisits:hvPending,healthTodayStu,coverage}
   };
 }
 
@@ -780,7 +788,7 @@ function computePersonal(todos,ctx,calEvents){
   if(ctx.teach&&ctx.teach.todayPending>0)
     auto.push({icon:'📝',text:'บันทึกการสอนวันนี้อีก '+ctx.teach.todayPending+' คาบ',url:CFG.logUrl});
   if(ctx.student&&ctx.student.pendingVisits>0)
-    auto.push({icon:'🏠',text:'เยี่ยมบ้านยังไม่ครบ — เหลือ '+ctx.student.pendingVisits+' คน',url:CFG.studentUrl});
+    auto.push({icon:'🏠',text:'เยี่ยมบ้านทั้งโรงเรียน (2569) เหลืออีก '+ctx.student.pendingVisits+' คน',url:CFG.visitApi});
   if(ctx.student&&ctx.student.healthTodayStu===0)
     auto.push({icon:'🩺',text:'วันนี้ยังไม่ได้ตรวจสุขภาพนักเรียน',url:CFG.studentUrl});
   (ctx.proj&&ctx.proj.highTodos||[]).forEach(t=>
@@ -825,11 +833,26 @@ async function loadReal(){
   let xpTotal=0, anyLive=false;
   const ctx={};   // summary จากแต่ละหมวด ไว้ทำ auto-digest ของแพนด้า
 
-  // 🐮 งานสอน (gviz)
+  // 🐮 งานสอน (gviz) + 👀 งานนิเทศ (snapshot ผลนิเทศ ปี 2569)
   try{
     const [schedule,logs,subjects]=await Promise.all([gviz(CFG.scheduleId),gviz(CFG.teachingLogId),gviz(CFG.subjectsId)]);
     const t=computeTeaching(schedule,logs,subjects);
     DATA.cow=t.card; xpTotal+=t.xp; anyLive=true; ctx.teach=t.summary;
+    // แนบผลนิเทศปี 2569 ของ T013 (ครูณัฐธเนศ) — ไม่บล็อกงานสอนถ้าโหลดไม่ได้
+    try{
+      const sup=await fetch(CFG.supervisionUrl).then(r=>r.json());
+      const mine=((sup&&sup.evalData)||[]).filter(e=>
+        String(e.evaluateeName||'').indexOf('ณัฐธเนศ')>=0 && String(e.year)==='2569');
+      mine.sort((a,b)=>String(b.evalDate||'').localeCompare(String(a.evalDate||'')));
+      if(mine.length){
+        const m=mine[0];
+        DATA.cow.supervision={score:m.totalScore,level:m.qualityLevel,by:m.assessorName,
+          date:asDateStr(m.evalDate),cls:m.className,count:mine.length};
+        DATA.cow.badges=(DATA.cow.badges||[]).concat('👀 นิเทศ '+m.totalScore+' ('+m.qualityLevel+')');
+      }else{
+        DATA.cow.supervision={none:true};
+      }
+    }catch(e){ console.warn('นิเทศ: โหลดไม่สำเร็จ',e); }
     document.getElementById('c-cow').classList.add('live');
   }catch(err){ console.warn('งานสอน: โหลดไม่สำเร็จ',err); }
 
@@ -844,12 +867,13 @@ async function loadReal(){
     }
   }catch(err){ console.warn('เว็บ/โปรเจกต์: โหลดไม่สำเร็จ',err); }
 
-  // 🐰 งานนักเรียน (gviz หลายชีตใน StudentDB)
+  // 🐰 งานนักเรียน (welfare gviz + เยี่ยมบ้านจริงปี 2569 จาก krubk35)
   try{
-    const [profiles,health,visits,deeds]=await Promise.all([
+    const [profiles,health,deeds,hv]=await Promise.all([
       gviz(CFG.studentSS,'StudentProfiles'),gviz(CFG.studentSS,'HealthCheck'),
-      gviz(CFG.studentSS,'HomeVisit'),gviz(CFG.studentSS,'GoodDeeds')]);
-    const s=computeStudents(profiles,health,visits,deeds);
+      gviz(CFG.studentSS,'GoodDeeds'),
+      fetch(CFG.visitApi+'?dash=').then(r=>r.json()).then(j=>j.data||{}).catch(()=>({}))]);
+    const s=computeStudents(profiles,health,deeds,hv);
     DATA.rabbit=s.card; xpTotal+=s.xp; anyLive=true; ctx.student=s.summary;
     document.getElementById('c-rabbit').classList.add('live');
   }catch(err){ console.warn('งานนักเรียน: โหลดไม่สำเร็จ',err); }
@@ -974,6 +998,20 @@ function openPanel(k){
          </div>`).join('')+`</div>`;
     }else{
       html+=`<div class="quote">วันนี้ไม่มีคาบสอน 🎉</div>`;
+    }
+  }
+  // 🐮 งานนิเทศ (ผลนิเทศ ปีการศึกษา 2569)
+  if(d.supervision){
+    const s=d.supervision;
+    html+=`<div class="sec-h">👀 งานนิเทศ <small>(ปีการศึกษา 2569)</small></div>`;
+    if(s.none){
+      html+=`<div class="quote">ปีนี้ยังไม่มีบันทึกผลนิเทศ</div>`;
+    }else{
+      html+=`<div class="subj"><div class="subj-row">
+        <span class="subj-n">ผลนิเทศล่าสุด<small style="color:#8a9bb0"> ${s.cls||''} · ${s.date||''}${s.by?' · โดย '+s.by:''}</small></span>
+        <span class="subj-v"><b style="color:#2f7dc4">${s.score}</b> <small>${s.level||''}</small></span></div>`
+        + (s.count>1?`<div class="subj-row"><span class="subj-n" style="color:#8a9bb0">ถูกนิเทศปีนี้ทั้งหมด</span><span class="subj-v"><b>${s.count}</b> ครั้ง</span></div>`:'')
+        + `</div>`;
     }
   }
   // 🐼 งานส่วนตัว (จากชีต)
