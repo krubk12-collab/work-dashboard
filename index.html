@@ -449,6 +449,17 @@ const CFG={
 };
 const CLASS_MAP={C17:'ม.1/1',C18:'ม.1/2',C19:'ม.2/1',C20:'ม.2/2',C21:'ม.3/1',C22:'ม.3/2'};
 const DOW_TH=['','จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์','อาทิตย์'];
+// 🐰 โซน B — แอป/ใบงานที่รวบรวมงานนักเรียน (launch hub) เปิดจากที่เดียว
+const STUDENT_WORK_APPS=[
+  { icon:'🧪', name:'AI Lab Diary', desc:'ใบงาน AI ม.1 · บันทึก Prompt/Workshop (40% เกรด)',
+    url:'https://script.google.com/macros/s/AKfycbzRwWVrXicVosHtHsj3M1QclWy7s2-WWV0-Jk-zN5icg-67d4TJDB885ohjch8SqBSFhQ/exec' },
+  { icon:'📥', name:'ระบบเก็บงาน (Collect)', desc:'เก็บไฟล์/คำตอบราย Topic 5 โหมด',
+    url:'https://sites.google.com/nonedu2.go.th/testbk/' },
+  { icon:'🃏', name:'สแกนการ์ดตอบ', desc:'ควิซแบบ Plickers เก็บคะแนนอัตโนมัติ',
+    url:'https://krubk12-collab.github.io/bklive-cardscan/' },
+  { icon:'🤖', name:'AI Explorer ม.1', desc:'งาน/กิจกรรมวิชา AI',
+    url:'https://krubk12-collab.github.io/bklive-ai-explorer/' }
+];
 
 // โหลดชีตเป็น array ของ object (key = ชื่อคอลัมน์แถวแรก) — ระบุชื่อชีตได้
 function gviz(sheetId,sheetName){
@@ -671,14 +682,16 @@ function computeStudents(profiles,health,deeds,hv){
   else bubble='มาดูแลน้องๆ กันเถอะ 🐰';
 
   return {
-    card:{title:'งานนักเรียน',subtitle:'เยี่ยมบ้านทั้งโรงเรียน '+coverage+'% ('+hvVisited+'/'+hvTotal+' คน · 2569)',
+    card:{title:'งานนักเรียน',subtitle:'ดูแล '+hvVisited+'/'+hvTotal+' · งาน/ใบงาน '+STUDENT_WORK_APPS.length+' แอป',
       color:'#a0e7a0',bubble,
       stats:[['เยี่ยมบ้าน (2569)',hvVisited+' / '+hvTotal+' คน'],
              ['ยังไม่ได้เยี่ยม',hvPending+' คน'],
              ['ตรวจสุขภาพวันนี้',healthTodayStu+' คน'],
              ['บันทึกความดี',myDeeds.length+' ครั้ง ('+deedPts+' แต้ม)']],
       progress:coverage,badges,
+      zoneA:'ดูแลนักเรียน · สวัสดิการ ('+coverage+'% · 2569)',
       healthToday:healthList,goodDeeds,
+      workApps:STUDENT_WORK_APPS,
       links:[{label:'🏠 เปิดระบบเยี่ยมบ้าน',url:CFG.visitApi},{label:'👧 ระบบนักเรียน',url:CFG.studentUrl}],
       quote:coverage<100?'เยี่ยมบ้านให้ครบทุกคนนะ น้องๆ รออยู่ 🏠':'ดูแลน้องๆ ครบทุกคนเลย เยี่ยมมาก!'},
     xp:myDeeds.length*5+myHealth.length*2+Math.round(coverage/5),
@@ -986,6 +999,9 @@ function openPanel(k){
     + `<div class="bar"><i style="width:${d.progress}%;background:linear-gradient(90deg,${d.color},${shade(d.color,-18)})"></i></div>`
     + `<div class="badges">${d.badges.map(b=>`<span class="badge">${b}</span>`).join('')}</div>`;
 
+  // 🐰 โซน A — หัวข้อดูแลนักเรียน (ก่อนสุขภาพ/ความดี)
+  if(d.zoneA) html+=`<div class="sec-h">🏠 ${d.zoneA}</div>`;
+
   // ตารางสอนวันนี้
   if(d.today){
     html+=`<div class="sec-h">🗓️ คาบสอนวันนี้</div>`;
@@ -1110,6 +1126,16 @@ function openPanel(k){
     html+=`<div class="subj">`+d.goodDeeds.map(g=>
       `<div class="subj-row"><span class="subj-n">${g.desc}<small style="color:#a7a4c0"> ${g.cls} · ${g.date}</small></span>
         <span class="subj-v"><b style="color:#27a05a">+${g.pts}</b></span></div>`).join('')+`</div>`;
+  }
+  // 🐰 โซน B — งาน/ใบงานนักเรียน (แอปเก็บงาน เปิดจากที่เดียว)
+  if(d.workApps&&d.workApps.length){
+    html+=`<div class="sec-h">📥 งาน / ใบงานนักเรียน <small>(แอปเก็บงาน — เปิดจากที่เดียว)</small></div>`;
+    html+=`<div class="proj">`+d.workApps.map(a=>
+      `<div class="proj-row">
+         <span class="proj-ic">${a.icon}</span>
+         <span class="proj-n">${a.name}<small>${a.desc}</small></span>
+         <a class="proj-go" href="${a.url}" target="_blank" rel="noopener">เปิด ↗</a>
+       </div>`).join('')+`</div>`;
   }
   // สรุปสอนสะสมรายวิชา
   if(d.bySubject&&d.bySubject.length){
