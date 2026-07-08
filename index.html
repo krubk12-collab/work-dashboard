@@ -1669,6 +1669,15 @@ async function renderDigest(date){
 }
 
 /* ---------- สัญญาณ กบข. (คำนวณจากชีต 'รวม' ที่โหลดไว้) ---------- */
+/* สัญญาณ กบข. ตัวจริง (CDC ActionZone + แผนที่ถือ — ตัวเดียวกับที่ส่ง LINE ทุกวัน) จาก GPF Tracker GAS */
+const GPF_SIGNAL_API='https://script.google.com/macros/s/AKfycbzUoRo4apPxVt7X5WUCmVkF8b9tYTEALzWpwptkzj91qjmUiudHfJGyWfAInQnCzySx8w/exec?action=signal';
+async function loadGpfSignal(){
+  try{
+    const j=await (await fetch(GPF_SIGNAL_API,{redirect:'follow'})).json();
+    if(j&&j.ok){ SUM.gpfSig=j; updateSumCards(); }
+  }catch(_){/* ล่มก็ใช้สัญญาณหยาบจาก NAV แทน */}
+}
+function gpfZone_(z){ return {bull:['🟢','ขาขึ้น','sc-up'],side:['🟡','แกว่ง','muted'],bear:['🔴','ขาลง','sc-dn']}[z]||['⚪️','-','muted']; }
 function gpfSignal_(rows,pc){
   const num=v=>parseFloat(String(v==null?'':v).replace(/,/g,''));
   const series=rows.map(r=>num(r[pc])).filter(isFinite);
@@ -1681,7 +1690,21 @@ function gpfSignal_(rows,pc){
 }
 function renderGpf(){
   const g=SUM.gpf;
-  if(!g||!g.rows.length) return '<p class="muted">ยังไม่มีข้อมูล NAV กบข.</p>';
+  // ส่วนบน: สัญญาณตัวจริง (เหมือนข้อความ LINE) ถ้าโหลดได้
+  let sigHtml='';
+  const s=SUM.gpfSig;
+  if(s&&s.ok){
+    const moodCls=s.mood==='pos'?'sc-up':s.mood==='neg'?'sc-dn':'muted';
+    sigHtml=`<div style="border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:10px 12px;margin-bottom:12px">`
+      +`<p style="margin:0 0 6px"><b>💰 สัญญาณ กบข.</b> <span class="muted">(NAV ${esc_(s.asOf)})</span></p>`
+      +`<p style="margin:0 0 8px"><b class="${moodCls}">${esc_(s.headline)}</b></p>`
+      +`<p class="muted" style="margin:0 0 4px">📌 แผนที่ถือ:</p>`
+      +s.held.map(p=>{const z=gpfZone_(p.zone);
+        return `<div class="rd-row"><span class="rt">${esc_(p.name)}</span><span class="rv"><b class="${z[2]}">${z[0]} ${z[1]}</b> <small class="muted">(3ด ${(p.m3>=0?'+':'')+p.m3}%)</small></span></div>`;}).join('')
+      +`<p style="margin:8px 0 0">🏆 สัญญาณดีสุดตอนนี้: <b>${esc_(s.top.join(', '))}</b> <small class="muted">★=ถืออยู่</small></p>`
+      +`</div>`;
+  }
+  if(!g||!g.rows.length) return sigHtml||'<p class="muted">ยังไม่มีข้อมูล NAV กบข.</p>';
   const dateCol=g.cols[0], lastRow=g.rows[g.rows.length-1];
   let up=0,dn=0,rows='';
   g.planCols.forEach(pc=>{
@@ -1691,8 +1714,9 @@ function renderGpf(){
       +`<span class="rv">${s.last.toFixed(4)} <b class="${s.sig[1]}">${s.sig[0]} ${(s.chg>=0?'+':'')+s.chg.toFixed(2)}% <small>(${s.sig[2]})</small></b></span></div>`;
   });
   const dstr=lastRow[dateCol]?thDate_(asDateStr(lastRow[dateCol])):'';
-  return `<p class="muted">ข้อมูลล่าสุด ${dstr} · เทียบแนวโน้ม ~5 วัน · ขาขึ้น ${up} / ขาลง ${dn} แผน</p>`+rows
-    +`<p class="muted" style="margin-top:12px">* สัญญาณคำนวณจากราคา NAV เทียบ ~5 วันก่อนหน้า เพื่อดูทิศทาง ไม่ใช่คำแนะนำการลงทุน</p>`;
+  return sigHtml
+    +`<p class="muted">NAV รายแผน — ข้อมูลล่าสุด ${dstr} · เทียบแนวโน้ม ~5 วัน · ขาขึ้น ${up} / ขาลง ${dn} แผน</p>`+rows
+    +`<p class="muted" style="margin-top:12px">* ไม่ใช่คำแนะนำการลงทุน — สัญญาณด้านบนใช้ CDC ActionZone (EMA12/26)+โมเมนตัม 3 เดือน ตัวเดียวกับที่ส่ง LINE, ส่วน NAV รายแผนเทียบ ~5 วันเพื่อดูทิศทางคร่าวๆ</p>`;
 }
 
 /* ---------- สรุปวันนี้ / พรุ่งนี้ (จากปฏิทินที่โหลดไว้) ---------- */
@@ -1759,8 +1783,12 @@ function updateSumCards(){
   const dg=SUM.digests;
   if(dg){ const el=document.getElementById('sc-digest');
     el.textContent=dg.length?('ล่าสุด '+thDate_(dg[dg.length-1])+' · ย้อนหลัง '+dg.length+' วัน'):'ยังไม่มีบันทึก'; }
-  // gpf
-  if(SUM.gpf&&SUM.gpf.rows.length){ let up=0,dn=0;
+  // gpf — ใช้สัญญาณตัวจริงถ้ามี (headline สั้น + วัน NAV), fallback = นับขึ้น/ลงจาก NAV หยาบ
+  if(SUM.gpfSig&&SUM.gpfSig.ok){
+    const s=SUM.gpfSig, cls=s.mood==='pos'?'sc-up':s.mood==='neg'?'sc-dn':'';
+    const short=s.mood==='pos'?'🟢 เสี่ยงขาขึ้น — คงน้ำหนักหุ้น':s.mood==='neg'?'🔴 โหมดระวัง — ตราสารหนี้กำบัง':'🟡 ตลาดสองทาง — คงพอร์ต';
+    document.getElementById('sc-gpf').innerHTML='<span class="'+cls+'">'+short+'</span> · NAV '+esc_(s.asOf);
+  } else if(SUM.gpf&&SUM.gpf.rows.length){ let up=0,dn=0;
     SUM.gpf.planCols.forEach(pc=>{const s=gpfSignal_(SUM.gpf.rows,pc);if(s){if(s.chg>0.15)up++;else if(s.chg<-0.15)dn++;}});
     const el=document.getElementById('sc-gpf');
     el.innerHTML=up>dn?('<span class="sc-up">ขาขึ้น '+up+' แผน ▲</span>'):dn>up?('<span class="sc-dn">ขาลง '+dn+' แผน ▼</span>'):'ทรงตัว';
@@ -1772,7 +1800,7 @@ function updateSumCards(){
     const em=document.getElementById('sc-tomorrow'); if(em) em.textContent=tn.length?('เลขาส่ง '+thDate_(tn[tn.length-1])):'รอเลขาส่ง (~18:00)';
   }
 }
-loadDigestList(); loadSummaryList();
+loadDigestList(); loadSummaryList(); loadGpfSignal();
 </script>
 </body>
 </html>
